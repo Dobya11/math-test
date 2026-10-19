@@ -91,7 +91,6 @@ header nav > button {
   min-height: 80px;
 
   border: none;
-  outline: none;
 
   background: transparent;
   color: var(--text-color-fg);
@@ -105,7 +104,6 @@ header nav > button {
 
 header nav > button:focus,
 header nav > button:active {
-  outline: none;
   background: transparent;
   box-shadow: none;
 }
@@ -223,6 +221,13 @@ button:active {
   transform: scale(0.95);
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--black-2);
+  outline-offset: 3px;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -264,7 +269,6 @@ select.info-item {
 
 select.info-item:focus,
 select.info-item:focus-visible {
-  outline: none;
   border: none;
   box-shadow: none;
 }

@@ -21,7 +21,8 @@ function readStoredAccounts(): StoredAccount[] {
         typeof account?.name === "string" &&
         (account?.role === "teacher" || account?.role === "student"),
     );
-  } catch {
+  } catch (error) {
+    console.error("Unable to read stored accounts.", error);
     return [];
   }
 }
@@ -41,7 +42,8 @@ export function getAccounts(): User[] {
 export function getActiveAccountId(): string | null {
   try {
     return localStorage.getItem(ACTIVE_ACCOUNT_KEY);
-  } catch {
+  } catch (error) {
+    console.error("Unable to read the active account.", error);
     return null;
   }
 }
@@ -86,6 +88,7 @@ export function createAccount(name: string, role: User["role"]): User {
 
   localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
   return { id: account.id, name: account.name, role: account.role };
+  
 }
 
 export function selectAccount(accountId: string): User {
@@ -101,7 +104,7 @@ export function selectAccount(accountId: string): User {
 export function signOut(): void {
   try {
     localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
-  } catch {
-    // ignore
+  } catch (error) {
+    console.error("Unable to sign out from the active account.", error);
   }
 }

@@ -742,3 +742,8 @@ export function generateQuestion(
   }
   return fn(difficulty);
 }
+
+export function decreaseDifficulty(difficulty: Difficulty): Difficulty {
+  if (difficulty === "hard") return "medium";
+  return "easy";
+}

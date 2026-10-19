@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageCard from "./components/Card.tsx";
 
 import type {
@@ -10,8 +10,13 @@ import type {
   TypeStat,
 } from "./ts/types.ts";
 
-import { GRADE_TASK_TYPES, generateQuestion } from "./ts/taskGenerator.ts";
+import {
+  decreaseDifficulty,
+  GRADE_TASK_TYPES,
+  generateQuestion,
+} from "./ts/taskGenerator.ts";
 import { getWeakTypeIds, levelFromStats, saveResult } from "./ts/storage.ts";
+import { secondsUntil } from "./ts/timer.ts";
 
 interface TestProps {
   grade: Grade;
@@ -86,18 +91,26 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grade, questionCount]);
 
+  const [questionOverrides, setQuestionOverrides] = useState<
+    Record<number, Question>
+  >({});
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const [answers, setAnswers] = useState<AnsweredQuestion[]>([]);
   const [userAnswer, setUserAnswer] = useState("");
 
   const [timeLeft, setTimeLeft] = useState<number | null>(timeLimitSec);
+  const [deadline] = useState<number | null>(() =>
+    timeLimitSec === null ? null : Date.now() + timeLimitSec * 1000,
+  );
 
   const [questionStartTime, setQuestionStartTime] = useState(() => Date.now());
   const [testStartTime] = useState(() => Date.now());
 
   const [finished, setFinished] = useState(false);
+  const finishedRef = useRef(false);
   const [result, setResult] = useState<TestResult | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(
     null,
@@ -107,6 +120,8 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
 
   const finishTest = useCallback(
     (finalAnswers: AnsweredQuestion[] = answers) => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
       setFinished(true);
 
       const typeStats: TypeStat[] = GRADE_TASK_TYPES[grade].map((t) => {
@@ -147,34 +162,37 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
         worstTypeId: worst?.typeId ?? null,
       };
 
-      saveResult(finalResult);
+      try {
+        saveResult(finalResult);
+      } catch (error) {
+        console.error("Unable to save the completed test result.", error);
+        setSaveError(
+          error instanceof Error
+            ? error.message
+            : "Результат показано, але не вдалося його зберегти.",
+        );
+      }
       setResult(finalResult);
     },
     [answers, grade, testStartTime, timeLimitSec],
   );
 
   useEffect(() => {
-    if (timeLimitSec === null || finished) {
-      return;
-    }
+    if (deadline === null || finished) return;
 
-    const timer = window.setInterval(() => {
-      setTimeLeft((value) => {
-        if (value === null) {
-          return null;
-        }
+    const updateTimeLeft = () => {
+      setTimeLeft(secondsUntil(deadline, Date.now()));
+    };
+    updateTimeLeft();
 
-        if (value <= 1) {
-          window.clearInterval(timer);
-          return 0;
-        }
+    const timer = window.setInterval(updateTimeLeft, 1000);
+    document.addEventListener("visibilitychange", updateTimeLeft);
 
-        return value - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [timeLimitSec, finished]);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", updateTimeLeft);
+    };
+  }, [deadline, finished]);
 
   useEffect(() => {
     if (timeLimitSec !== null && timeLeft === 0 && !finished) {
@@ -223,6 +241,22 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
     const newAnswers = [...answers, answered];
 
     setAnswers(newAnswers);
+    const nextIndex = currentIndex + 1;
+    if (!isCorrect && nextIndex < questions.length) {
+      const nextQuestion = questionOverrides[nextIndex] ?? questions[nextIndex];
+      const easierDifficulty = decreaseDifficulty(currentQuestion.difficulty);
+
+      if (nextQuestion.difficulty !== easierDifficulty) {
+        setQuestionOverrides((overrides) => ({
+          ...overrides,
+          [nextIndex]: generateQuestion(
+            grade,
+            nextQuestion.typeId,
+            easierDifficulty,
+          ),
+        }));
+      }
+    }
     setCorrectAnswerText(currentQuestion.answer);
     setFeedback(isCorrect ? "correct" : "incorrect");
     setFeedbackQuote(pick(isCorrect ? CORRECT_QUOTES : INCORRECT_QUOTES));
@@ -288,6 +322,11 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
         </PageCard>
 
         <PageCard type="test">
+          {saveError && (
+            <p className="account-error" role="alert">
+              {saveError}
+            </p>
+          )}
           <p>Правильних відповідей</p>
           <h2 className="result-score">
             {correct} з {total}
@@ -350,7 +389,8 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
     );
   }
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion =
+    questionOverrides[currentIndex] ?? questions[currentIndex];
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
@@ -361,7 +401,14 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
       <PageCard type="header">
         <div className="test-header">
           {timeLimitSec !== null && (
-            <span className="test-timer">{formatTime(timeLeft)}</span>
+            <span
+              className={`test-timer${timeLeft !== null && timeLeft <= 60 ? " warning" : ""}`}
+              role="timer"
+              aria-label="Час до завершення тесту"
+              aria-live="off"
+            >
+              {formatTime(timeLeft)}
+            </span>
           )}
         </div>
       </PageCard>
@@ -370,7 +417,14 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
         <span>
           Питання {currentIndex + 1} / {questions.length}
         </span>
-        <div className="progress">
+        <div
+          className="progress"
+          role="progressbar"
+          aria-label="Прогрес тесту"
+          aria-valuenow={currentIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={questions.length}
+        >
           <div
             className="progress-bar"
             style={{
@@ -385,7 +439,7 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
           {difficultyLabel(currentQuestion.difficulty)}
         </p>
 
-        <h2>{currentQuestion.prompt}</h2>
+        <h2 id="question-prompt">{currentQuestion.prompt}</h2>
 
         {currentQuestion.hint && <p className="hint">{currentQuestion.hint}</p>}
 
@@ -396,6 +450,13 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
                 key={value}
                 type="button"
                 className={userAnswer === value ? "selected" : ""}
+                aria-label={
+                  value === "<"
+                    ? "Менше"
+                    : value === ">"
+                      ? "Більше"
+                      : "Дорівнює"
+                }
                 disabled={isAnswered}
                 onClick={() => setUserAnswer(value)}
               >
@@ -405,6 +466,7 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
           </div>
         ) : (
           <input
+            aria-labelledby="question-prompt"
             type={currentQuestion.answerType === "number" ? "number" : "text"}
             value={userAnswer}
             disabled={isAnswered}

@@ -106,7 +106,11 @@ function TeacherOverview({ user }: { user: User }) {
       </PageCard>
 
       <PageCard type="analysis">
-        <h2>Мої учні</h2>
+        <h2>Учні на цьому пристрої</h2>
+        <p>
+          Тут відображаються результати профілів учнів, створених на цьому
+          пристрої.
+        </p>
         {students.length === 0 ? (
           <p>Поки немає учнів на цьому пристрої.</p>
         ) : (

@@ -115,7 +115,7 @@ function App() {
         </header>
       ) : (
         <header>
-          <nav>
+          <nav aria-label="Основна навігація">
             <div
               className="selector"
               style={
@@ -125,11 +125,17 @@ function App() {
               }
             />
 
-            <button onClick={() => setScreen(screens[0])}>
+            <button
+              aria-current={screen === screens[0] ? "page" : undefined}
+              onClick={() => setScreen(screens[0])}
+            >
               {screenTitles[screens[0]]}
             </button>
 
-            <button onClick={() => setScreen(screens[1])}>
+            <button
+              aria-current={screen === screens[1] ? "page" : undefined}
+              onClick={() => setScreen(screens[1])}
+            >
               {screenTitles[screens[1]]}
             </button>
           </nav>
