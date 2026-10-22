@@ -10,6 +10,22 @@ const grades: Grade[] = [1, 2, 3, 4];
 const difficulties: Difficulty[] = ["easy", "medium", "hard"];
 
 describe("generateQuestion", () => {
+  it("keeps topics appropriate for each grade", () => {
+    expect(GRADE_TASK_TYPES[1].map(({ id }) => id)).toContain("word_problem");
+    expect(GRADE_TASK_TYPES[2].map(({ id }) => id)).toContain("word_problem");
+    expect(GRADE_TASK_TYPES[2].map(({ id }) => id)).not.toContain(
+      "multiplication",
+    );
+    expect(GRADE_TASK_TYPES[2].map(({ id }) => id)).not.toContain("division");
+    expect(GRADE_TASK_TYPES[3].map(({ id }) => id)).toEqual([
+      "addition",
+      "subtraction",
+      "multiplication",
+      "division",
+    ]);
+    expect(GRADE_TASK_TYPES[3].map(({ id }) => id)).not.toContain("geometry");
+  });
+
   it("generates valid questions for every grade, task type, and difficulty", () => {
     for (const grade of grades) {
       for (const taskType of GRADE_TASK_TYPES[grade]) {
@@ -31,6 +47,41 @@ describe("generateQuestion", () => {
             }
           }
         }
+      }
+    }
+  });
+
+  it("avoids zero operands and answers in grades 1 through 3", () => {
+    for (const grade of [1, 2, 3] as const) {
+      for (const taskType of GRADE_TASK_TYPES[grade]) {
+        for (const difficulty of difficulties) {
+          for (let sample = 0; sample < 100; sample += 1) {
+            const question = generateQuestion(grade, taskType.id, difficulty);
+
+            expect(question.prompt).not.toMatch(/(?:^|[^\d])0(?:$|[^\d])/);
+            expect(question.answer).not.toBe("0");
+          }
+        }
+      }
+    }
+  });
+
+  it("generates simple addition and subtraction word problems for grades 1 and 2", () => {
+    for (const grade of [1, 2] as const) {
+      const max = grade === 1 ? 20 : 100;
+
+      for (let sample = 0; sample < 100; sample += 1) {
+        const question = generateQuestion(grade, "word_problem", "medium");
+        const numbers = question.prompt.match(/\d+/g)?.map(Number) ?? [];
+        const [first, second] = numbers;
+        const expected =
+          question.prompt.includes("разом") || question.prompt.includes("ще")
+            ? first + second
+            : first - second;
+
+        expect(numbers).toHaveLength(2);
+        expect(numbers.every((number) => number <= max)).toBe(true);
+        expect(question.answer).toBe(String(expected));
       }
     }
   });

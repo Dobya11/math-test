@@ -55,16 +55,16 @@ function createResult(id: string, grade: TestResult["grade"] = 1): TestResult {
     timeTakenMs: 120_000,
     typeStats: [
       {
-        typeId: "add_sub",
-        typeLabel: "Додавання/віднімання",
+        typeId: "addition",
+        typeLabel: "Додавання",
         total: 2,
         correct: 1,
         finalDifficulty: "medium",
         level: 2,
       },
     ],
-    bestTypeId: "add_sub",
-    worstTypeId: "add_sub",
+    bestTypeId: "addition",
+    worstTypeId: "addition",
   };
 }
 
@@ -144,7 +144,7 @@ describe("test result storage", () => {
           typeStats: [
             {
               ...createResult("other").typeStats[0],
-              typeId: "geometry",
+              typeId: "equations",
               level: 4,
             },
           ],
@@ -152,7 +152,7 @@ describe("test result storage", () => {
       ]),
     );
 
-    expect(getWeakTypeIds(1)).toEqual(new Set(["add_sub"]));
+    expect(getWeakTypeIds(1)).toEqual(new Set(["addition"]));
   });
 
   it("maps performance and difficulty to levels from 1 to 5", () => {

@@ -102,7 +102,6 @@ function Tests({ initialGrade, onStartTest }: TestsProps) {
           <p>Твій результат з’явиться тут після тесту.</p>
         ) : (
           <>
-            <p>Правильних відповідей</p>
             <strong className="result-score">
               {lastResult.correctAnswers} з {lastResult.totalQuestions}
             </strong>
@@ -146,7 +145,7 @@ function Tests({ initialGrade, onStartTest }: TestsProps) {
                     <div className="skill-item" key={stat.typeId}>
                       <div className="skill-item__label">
                         <strong>{stat.typeLabel}</strong>
-                        <span>
+                        <span className="muted">
                           {stat.correct} з {stat.total} правильно
                         </span>
                       </div>

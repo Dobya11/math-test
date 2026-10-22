@@ -76,12 +76,10 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
 
       let difficulty: Difficulty;
 
-      if (progress < 0.34) {
+      if (progress < 0.5) {
         difficulty = "easy";
-      } else if (progress < 0.67) {
-        difficulty = "medium";
       } else {
-        difficulty = "hard";
+        difficulty = "medium";
       }
 
       generated.push(generateQuestion(grade, typeId, difficulty));

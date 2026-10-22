@@ -88,7 +88,6 @@ export function createAccount(name: string, role: User["role"]): User {
 
   localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
   return { id: account.id, name: account.name, role: account.role };
-  
 }
 
 export function selectAccount(accountId: string): User {

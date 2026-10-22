@@ -75,21 +75,21 @@ function TeacherOverview({ user }: { user: User }) {
             <div className="profile-stats">
               <div>
                 <strong>{students.length}</strong>
-                <span>учнів</span>
+                <span className="muted">учнів</span>
               </div>
               <div>
                 <strong>{classAveragePercentage}%</strong>
-                <span>середній результат</span>
+                <span className="muted">середній результат</span>
               </div>
               <div>
                 <strong>{activeStudents}</strong>
-                <span>мають результати</span>
+                <span className="muted">мають результати</span>
               </div>
               <div>
                 <strong>
                   {classCorrectAnswers} з {classTotalQuestions}
                 </strong>
-                <span>правильних відповідей</span>
+                <span className="muted">правильних відповідей</span>
               </div>
             </div>
             <p className="result-message">
@@ -107,7 +107,7 @@ function TeacherOverview({ user }: { user: User }) {
 
       <PageCard type="analysis">
         <h2>Учні на цьому пристрої</h2>
-        <p>
+        <p className="muted">
           Тут відображаються результати профілів учнів, створених на цьому
           пристрої.
         </p>
@@ -119,7 +119,7 @@ function TeacherOverview({ user }: { user: User }) {
               <div className="history-item" key={student.account.id}>
                 <div>
                   <strong>{student.account.name}</strong>
-                  <p>
+                  <p className="muted">
                     {student.results.length === 0
                       ? "Ще не проходив тестів"
                       : `Тестів пройдено: ${student.results.length}`}
@@ -129,7 +129,9 @@ function TeacherOverview({ user }: { user: User }) {
                   <strong>
                     {student.correct} з {student.questions}
                   </strong>
-                  <p>{student.averagePercentage}% успішність</p>
+                  <p className="muted">
+                    {student.averagePercentage}% успішність
+                  </p>
                 </div>
               </div>
             ))}
@@ -169,7 +171,8 @@ function Profile({ user, onSignOut }: ProfileProps) {
     <div className="screen">
       <PageCard type="header">
         <h1>{user.name}</h1>
-        <p>{user.role === "teacher" ? "Вчитель" : "Учень"}</p>
+        <p className="role">{user.role === "teacher" ? "Вчитель" : "Учень"}</p>
+
         <button type="button" onClick={onSignOut}>
           Змінити профіль
         </button>
@@ -181,11 +184,11 @@ function Profile({ user, onSignOut }: ProfileProps) {
           <div className="profile-stats">
             <div>
               <strong>{studentCount}</strong>
-              <span>учнів на пристрої</span>
+              <span className="muted">учнів на пристрої</span>
             </div>
             <div>
               <strong>{user.name}</strong>
-              <span>роль</span>
+              <span className="muted">роль</span>
             </div>
           </div>
           <p className="result-message">
@@ -203,13 +206,13 @@ function Profile({ user, onSignOut }: ProfileProps) {
                 <div className="profile-stats">
                   <div>
                     <strong>{results.length}</strong>
-                    <span>тестів пройдено</span>
+                    <span className="muted">тестів пройдено</span>
                   </div>
                   <div>
                     <strong>
                       {correctAnswers} з {totalQuestions}
                     </strong>
-                    <span>відповідей правильні</span>
+                    <span className="muted">відповідей правильні</span>
                   </div>
                 </div>
                 <p>Зазвичай ти відповідаєш правильно на {averagePercentage}%</p>

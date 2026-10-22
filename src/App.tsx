@@ -1,3 +1,5 @@
+//#region "init"
+
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -17,7 +19,7 @@ const screenTitles: Record<Screen, string> = {
   profile: "Профіль",
   test: "Тест",
 };
-
+//#endregion
 function App() {
   const [account, setAccount] = useState<User | null>(getCurrentAccount);
   const [screen, setScreen] = useState<Screen>(
@@ -85,11 +87,7 @@ function App() {
           />
         )}
 
-        {screen === "overview" && (
-          <section className="screen">
-            <TeacherOverview user={account} />
-          </section>
-        )}
+        {screen === "overview" && <TeacherOverview user={account} />}
 
         {screen === "test" && testSettings && (
           <Test
@@ -101,9 +99,7 @@ function App() {
         )}
 
         {screen === "profile" && (
-          <section className="screen">
-            <Profile user={account} onSignOut={handleSignOut} />
-          </section>
+          <Profile user={account} onSignOut={handleSignOut} />
         )}
       </main>
 
