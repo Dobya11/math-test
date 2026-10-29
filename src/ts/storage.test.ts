@@ -157,7 +157,7 @@ describe("test result storage", () => {
 
   it("maps performance and difficulty to levels from 1 to 5", () => {
     expect(levelFromStats(0, 0, "easy")).toBe(1);
-    expect(levelFromStats(10, 10, "hard")).toBe(5);
+    expect(levelFromStats(10, 10, "medium")).toBe(4);
     expect(levelFromStats(10, 0, "easy")).toBe(1);
   });
 });

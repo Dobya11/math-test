@@ -14,6 +14,7 @@ import {
   decreaseDifficulty,
   GRADE_TASK_TYPES,
   generateQuestion,
+  generateTestQuestions,
 } from "./ts/taskGenerator.ts";
 import { getWeakTypeIds, levelFromStats, saveResult } from "./ts/storage.ts";
 import { secondsUntil } from "./ts/timer.ts";
@@ -49,45 +50,12 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function pickTypeId(typeIds: string[], weakIds: Set<string>): string {
-  const weights = typeIds.map((id) => (weakIds.has(id) ? 2 : 1));
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
-  let roll = Math.random() * totalWeight;
-
-  for (let i = 0; i < typeIds.length; i++) {
-    roll -= weights[i];
-    if (roll <= 0) return typeIds[i];
-  }
-
-  return typeIds[typeIds.length - 1];
-}
-
 function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
   const weakTypeIds = useMemo(() => getWeakTypeIds(grade), [grade]);
 
   const questions = useMemo(() => {
-    const types = GRADE_TASK_TYPES[grade];
-    const typeIds = types.map((t) => t.id);
-    const generated: Question[] = [];
-
-    for (let i = 0; i < questionCount; i++) {
-      const typeId = pickTypeId(typeIds, weakTypeIds);
-      const progress = i / Math.max(questionCount - 1, 1);
-
-      let difficulty: Difficulty;
-
-      if (progress < 0.5) {
-        difficulty = "easy";
-      } else {
-        difficulty = "medium";
-      }
-
-      generated.push(generateQuestion(grade, typeId, difficulty));
-    }
-
-    return generated;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grade, questionCount]);
+    return generateTestQuestions(grade, questionCount, weakTypeIds);
+  }, [grade, questionCount, weakTypeIds]);
 
   const [questionOverrides, setQuestionOverrides] = useState<
     Record<number, Question>
@@ -294,9 +262,6 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
 
       case "medium":
         return "Середня";
-
-      case "hard":
-        return "Складна";
     }
   }
 

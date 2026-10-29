@@ -33,8 +33,7 @@ function isTestResult(value: unknown): value is TestResult {
         Number.isInteger(stat.total) &&
         Number.isInteger(stat.correct) &&
         (stat.finalDifficulty === "easy" ||
-          stat.finalDifficulty === "medium" ||
-          stat.finalDifficulty === "hard") &&
+          stat.finalDifficulty === "medium") &&
         Number.isFinite(stat.level),
     ) &&
     (value.bestTypeId === null || typeof value.bestTypeId === "string") &&
@@ -138,8 +137,7 @@ export function levelFromStats(
 ): number {
   if (total === 0) return 1;
   const ratio = correct / total;
-  const difficultyScore =
-    finalDifficulty === "hard" ? 1 : finalDifficulty === "medium" ? 0.5 : 0;
+  const difficultyScore = finalDifficulty === "medium" ? 0.5 : 0;
   const raw = ratio * 0.6 + difficultyScore * 0.4;
   return Math.max(1, Math.min(5, Math.round(raw * 4) + 1));
 }

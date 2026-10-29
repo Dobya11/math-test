@@ -66,10 +66,40 @@ export const GRADE_TASK_TYPES: Record<Grade, TaskTypeConfig[]> = {
   ],
 };
 
+export const GRADE_DIFFICULTIES: Record<Grade, Difficulty[]> = {
+  1: ["easy", "medium"],
+  2: ["easy", "medium"],
+  3: ["easy", "medium"],
+  4: ["easy", "medium"],
+};
+
+function additionOperandsWithoutCarry(max: number): [number, number] {
+  let a: number;
+  let b: number;
+
+  do {
+    a = randInt(1, max - 1);
+    b = randInt(1, max - a);
+  } while ((a % 10) + (b % 10) >= 10);
+
+  return [a, b];
+}
+
+function subtractionOperandsWithoutBorrow(max: number): [number, number] {
+  let a: number;
+  let b: number;
+
+  do {
+    a = randInt(2, max);
+    b = randInt(1, a - 1);
+  } while (b % 10 > a % 10);
+
+  return [a, b];
+}
+
 function g1_addition(difficulty: Difficulty): Question {
   const max = difficulty === "easy" ? 10 : 20;
-  const a = randInt(1, max - 1);
-  const b = randInt(1, max - a);
+  const [a, b] = additionOperandsWithoutCarry(max);
   return build(
     1,
     "addition",
@@ -82,8 +112,7 @@ function g1_addition(difficulty: Difficulty): Question {
 
 function g1_subtraction(difficulty: Difficulty): Question {
   const max = difficulty === "easy" ? 10 : 20;
-  const a = randInt(2, max);
-  const b = randInt(1, a - 1);
+  const [a, b] = subtractionOperandsWithoutBorrow(max);
   return build(
     1,
     "subtraction",
@@ -197,8 +226,9 @@ function g3_division(difficulty: Difficulty): Question {
 function g1_word_problem(difficulty: Difficulty): Question {
   const max = difficulty === "easy" ? 10 : 20;
   const isAddition = Math.random() < 0.5;
-  const a = randInt(isAddition ? 1 : 2, isAddition ? max - 1 : max);
-  const b = randInt(1, isAddition ? max - a : a - 1);
+  const [a, b] = isAddition
+    ? additionOperandsWithoutCarry(max)
+    : subtractionOperandsWithoutBorrow(max);
   const prompt = isAddition
     ? `У хлопчика ${a} яблук, а в дівчинки ${b}. Скільки яблук у них разом?`
     : `У хлопчика було ${a} яблук. Він віддав ${b}. Скільки яблук залишилося?`;
@@ -271,36 +301,20 @@ function g4_expressions(difficulty: Difficulty): Question {
       answer,
     );
   }
-  if (difficulty === "medium") {
-    const a = randInt(2, 10);
-    const b = randInt(2, 10);
-    const c = randInt(1, 20);
-    const d = randInt(1, 20);
-    const answer = evalChain([a, b, c, d], ["×", "+", "-"]);
-    return build(
-      4,
-      "expressions",
-      "Вирази",
-      difficulty,
-      `${a} × ${b} + ${c} - ${d} = ?`,
-      answer,
-    );
-  }
-  const a = randInt(10, 40);
-  const b = randInt(1, 20);
-  const bracketVal = Math.random() < 0.5 ? a + b : a - b;
-  const c = randInt(2, 9);
+
+  const a = randInt(2, 10);
+  const b = randInt(2, 10);
+  const c = randInt(1, 20);
   const d = randInt(1, 20);
-  const useMul = Math.random() < 0.5;
-  const op = Math.random() < 0.5 ? "+" : "-";
-  const bracketOp = a + b === bracketVal ? "+" : "-";
-  const answer = useMul
-    ? bracketVal * c + (op === "+" ? d : -d)
-    : evalChain([bracketVal, c, d], ["+", op]);
-  const prompt = useMul
-    ? `(${a} ${bracketOp} ${b}) × ${c} ${op} ${d} = ?`
-    : `(${a} ${bracketOp} ${b}) + ${c} ${op} ${d} = ?`;
-  return build(4, "expressions", "Вирази", difficulty, prompt, answer);
+  const answer = evalChain([a, b, c, d], ["×", "+", "-"]);
+  return build(
+    4,
+    "expressions",
+    "Вирази",
+    difficulty,
+    `${a} × ${b} + ${c} - ${d} = ?`,
+    answer,
+  );
 }
 
 function g4_equations(difficulty: Difficulty): Question {
@@ -310,24 +324,10 @@ function g4_equations(difficulty: Difficulty): Question {
     const c = x + a;
     return build(4, "equations", "Рівняння", difficulty, `x + ${a} = ${c}`, x);
   }
-  if (difficulty === "medium") {
-    const x = randInt(2, 12);
-    const a = randInt(2, 9);
-    const c = a * x;
-    return build(4, "equations", "Рівняння", difficulty, `${a}x = ${c}`, x);
-  }
-  const x = randInt(2, 15);
+  const x = randInt(2, 12);
   const a = randInt(2, 9);
-  const b = randInt(1, 20);
-  const c = a * x + b;
-  return build(
-    4,
-    "equations",
-    "Рівняння",
-    difficulty,
-    `${a}x + ${b} = ${c}`,
-    x,
-  );
+  const c = a * x;
+  return build(4, "equations", "Рівняння", difficulty, `${a}x = ${c}`, x);
 }
 
 interface WordTemplate {
@@ -382,43 +382,11 @@ const wordTemplatesMedium: WordTemplate[] = [
   },
 ];
 
-const wordTemplatesHard: WordTemplate[] = [
-  {
-    build: () => {
-      const boxes = randInt(3, 8);
-      const perBox = randInt(4, 12);
-      const given = randInt(1, boxes * perBox - 5);
-      const friends = randInt(2, 5);
-      const total = boxes * perBox - given;
-      return {
-        prompt: `У ${boxes} коробках по ${perBox} олівців у кожній. ${given} олівців віддали. Решту порівну розділили між ${friends} дітьми. Скільки олівців отримала кожна дитина? (округли до цілого, якщо не ділиться точно — округли вниз)`,
-        answer: Math.floor(total / friends),
-      };
-    },
-  },
-  {
-    build: () => {
-      const speed = randInt(3, 8);
-      const hours1 = randInt(2, 4);
-      const hours2 = randInt(1, 3);
-      const extraDistance = randInt(2, 10);
-      const dist1 = speed * hours1;
-      const dist2 = speed * hours2 + extraDistance;
-      return {
-        prompt: `Турист пройшов ${hours1} год зі швидкістю ${speed} км/год, а потім ще ${hours2} год з тією ж швидкістю і додатково подолав ${extraDistance} км по прямій стежці. Скільки всього км пройшов турист?`,
-        answer: dist1 + dist2,
-      };
-    },
-  },
-];
-
 function g4_word_problem(difficulty: Difficulty): Question {
   const templates =
     difficulty === "easy"
       ? wordTemplatesEasy
-      : difficulty === "medium"
-        ? wordTemplatesMedium
-        : wordTemplatesHard;
+      : wordTemplatesMedium;
   const { prompt, answer } = pick(templates).build();
   return build(
     4,
@@ -462,6 +430,12 @@ export function generateQuestion(
   typeId: string,
   difficulty: Difficulty,
 ): Question {
+  if (!GRADE_DIFFICULTIES[grade].includes(difficulty)) {
+    throw new Error(
+      `Difficulty ${difficulty} is not available for grade ${grade}`,
+    );
+  }
+
   const fn = GENERATORS[grade]?.[typeId];
   if (!fn) {
     throw new Error(`No generator for grade ${grade}, type ${typeId}`);
@@ -469,7 +443,42 @@ export function generateQuestion(
   return fn(difficulty);
 }
 
+export function generateTestQuestions(
+  grade: Grade,
+  questionCount: number,
+  weakTypeIds: ReadonlySet<string>,
+): Question[] {
+  const taskTypes = GRADE_TASK_TYPES[grade];
+  const weakTypes = taskTypes.filter(({ id }) => weakTypeIds.has(id));
+  const otherTypes = taskTypes.filter(({ id }) => !weakTypeIds.has(id));
+  const hasOtherTypes = weakTypes.length > 0 && otherTypes.length > 0;
+  const weakQuestionCount = hasOtherTypes
+    ? Math.ceil((questionCount * 2) / 3)
+    : questionCount;
+  const selectedTypes: TaskTypeConfig[] = [];
+
+  for (let i = 0; i < questionCount; i += 1) {
+    const types =
+      weakTypes.length === 0
+        ? taskTypes
+        : i < weakQuestionCount || otherTypes.length === 0
+          ? weakTypes
+          : otherTypes;
+    selectedTypes.push(types[randInt(0, types.length - 1)]);
+  }
+
+  for (let i = selectedTypes.length - 1; i > 0; i -= 1) {
+    const j = randInt(0, i);
+    [selectedTypes[i], selectedTypes[j]] = [selectedTypes[j], selectedTypes[i]];
+  }
+
+  return selectedTypes.map(({ id }, index) => {
+    const progress = index / Math.max(questionCount - 1, 1);
+    const difficulty: Difficulty = progress < 0.5 ? "easy" : "medium";
+    return generateQuestion(grade, id, difficulty);
+  });
+}
+
 export function decreaseDifficulty(difficulty: Difficulty): Difficulty {
-  if (difficulty === "hard") return "medium";
-  return "easy";
+  return difficulty === "medium" ? "easy" : difficulty;
 }

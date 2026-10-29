@@ -1,4 +1,5 @@
 //#region "init"
+import { Analytics } from "@vercel/analytics/next";
 
 import { useEffect, useState } from "react";
 import "./App.css";
@@ -70,6 +71,7 @@ function App() {
   if (!account) {
     return (
       <div className="App">
+        <Analytics />
         <AccountGate
           onAuthenticated={(signedInAccount) => setAccount(signedInAccount)}
         />
@@ -79,6 +81,7 @@ function App() {
 
   return (
     <div className="App">
+      <Analytics />
       <main>
         {screen === "tests" && (
           <Tests

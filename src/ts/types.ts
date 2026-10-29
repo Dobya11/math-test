@@ -1,5 +1,5 @@
 export type Grade = 1 | 2 | 3 | 4;
-export type Difficulty = "easy" | "medium" | "hard";
+export type Difficulty = "easy" | "medium";
 export type AnswerType = "number" | "comparator" | "text";
 
 export interface TaskTypeConfig {
@@ -50,7 +50,6 @@ export interface TestResult {
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: "Легка",
   medium: "Середня",
-  hard: "Складна",
 };
 export interface User {
   id: string;
