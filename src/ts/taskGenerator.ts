@@ -384,9 +384,7 @@ const wordTemplatesMedium: WordTemplate[] = [
 
 function g4_word_problem(difficulty: Difficulty): Question {
   const templates =
-    difficulty === "easy"
-      ? wordTemplatesEasy
-      : wordTemplatesMedium;
+    difficulty === "easy" ? wordTemplatesEasy : wordTemplatesMedium;
   const { prompt, answer } = pick(templates).build();
   return build(
     4,

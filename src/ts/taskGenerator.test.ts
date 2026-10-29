@@ -126,15 +126,13 @@ describe("generateQuestion", () => {
     });
 
     it("uses only weak topics when all topics are weak", () => {
-      const weakTypeIds = new Set(
-        GRADE_TASK_TYPES[1].map(({ id }) => id),
-      );
+      const weakTypeIds = new Set(GRADE_TASK_TYPES[1].map(({ id }) => id));
       const questions = generateTestQuestions(1, 8, weakTypeIds);
 
       expect(questions).toHaveLength(8);
-      expect(
-        questions.every(({ typeId }) => weakTypeIds.has(typeId)),
-      ).toBe(true);
+      expect(questions.every(({ typeId }) => weakTypeIds.has(typeId))).toBe(
+        true,
+      );
     });
 
     it("uses all grade topics when there are no weak topics", () => {
