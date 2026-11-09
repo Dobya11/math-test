@@ -428,7 +428,11 @@ export function generateQuestion(
   typeId: string,
   difficulty: Difficulty,
 ): Question {
-  if (!GRADE_DIFFICULTIES[grade].includes(difficulty)) {
+  const difficulties = GRADE_DIFFICULTIES[grade];
+  if (!difficulties) {
+    throw new Error(`No generator for grade ${grade}, type ${typeId}`);
+  }
+  if (!difficulties.includes(difficulty)) {
     throw new Error(
       `Difficulty ${difficulty} is not available for grade ${grade}`,
     );
@@ -447,6 +451,12 @@ export function generateTestQuestions(
   weakTypeIds: ReadonlySet<string>,
 ): Question[] {
   const taskTypes = GRADE_TASK_TYPES[grade];
+  if (!taskTypes) {
+    throw new Error(`No task types are available for grade ${grade}`);
+  }
+  if (!Number.isSafeInteger(questionCount) || questionCount < 0) {
+    throw new RangeError("Question count must be a non-negative integer.");
+  }
   const weakTypes = taskTypes.filter(({ id }) => weakTypeIds.has(id));
   const otherTypes = taskTypes.filter(({ id }) => !weakTypeIds.has(id));
   const hasOtherTypes = weakTypes.length > 0 && otherTypes.length > 0;

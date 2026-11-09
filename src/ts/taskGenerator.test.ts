@@ -112,6 +112,22 @@ describe("generateQuestion", () => {
   });
 
   describe("generateTestQuestions", () => {
+    it("rejects negative and fractional question counts", () => {
+      expect(() => generateTestQuestions(2, -1, new Set())).toThrow(
+        "non-negative integer",
+      );
+      expect(() => generateTestQuestions(2, 1.5, new Set())).toThrow(
+        "non-negative integer",
+      );
+      expect(() =>
+        generateTestQuestions(2, Number.POSITIVE_INFINITY, new Set()),
+      ).toThrow("non-negative integer");
+    });
+
+    it("returns no questions for a zero-length test", () => {
+      expect(generateTestQuestions(2, 0, new Set())).toEqual([]);
+    });
+
     it("allocates at least two thirds of a test to weak topics", () => {
       const questions = generateTestQuestions(
         3,
@@ -173,5 +189,133 @@ describe("generateQuestion", () => {
       const expected = left < right ? "<" : left > right ? ">" : "=";
       expect(question.answer).toBe(expected);
     }
+  });
+
+  it("calculates every grade 2 through 4 arithmetic answer correctly", () => {
+    for (let sample = 0; sample < 100; sample += 1) {
+      for (const grade of [2, 3] as const) {
+        for (const typeId of ["addition", "subtraction"] as const) {
+          const question = generateQuestion(grade, typeId, "medium");
+          const match = question.prompt.match(/^(\d+) ([+-]) (\d+) = \?$/);
+          expect(match).not.toBeNull();
+          if (!match) continue;
+          const [, left, operator, right] = match;
+          const expected =
+            operator === "+"
+              ? Number(left) + Number(right)
+              : Number(left) - Number(right);
+          expect(question.answer).toBe(String(expected));
+        }
+      }
+
+      const multiplication = generateQuestion(3, "multiplication", "medium");
+      const multiplicationMatch = multiplication.prompt.match(
+        /^(\d+) × (\d+) = \?$/,
+      );
+      expect(multiplicationMatch).not.toBeNull();
+      if (multiplicationMatch) {
+        expect(multiplication.answer).toBe(
+          String(Number(multiplicationMatch[1]) * Number(multiplicationMatch[2])),
+        );
+      }
+
+      const division = generateQuestion(3, "division", "medium");
+      const divisionMatch = division.prompt.match(/^(\d+) : (\d+) = \?$/);
+      expect(divisionMatch).not.toBeNull();
+      if (divisionMatch) {
+        expect(division.answer).toBe(
+          String(Number(divisionMatch[1]) / Number(divisionMatch[2])),
+        );
+      }
+
+      const expression = generateQuestion(4, "expressions", "medium");
+      const expressionMatch = expression.prompt.match(
+        /^(\d+) × (\d+) \+ (\d+) - (\d+) = \?$/,
+      );
+      expect(expressionMatch).not.toBeNull();
+      if (expressionMatch) {
+        const [, a, b, c, d] = expressionMatch.map(Number);
+        expect(expression.answer).toBe(String(a * b + c - d));
+      }
+
+      const equation = generateQuestion(4, "equations", "medium");
+      const equationMatch = equation.prompt.match(/^(\d+)x = (\d+)$/);
+      expect(equationMatch).not.toBeNull();
+      if (equationMatch) {
+        expect(equation.answer).toBe(
+          String(Number(equationMatch[2]) / Number(equationMatch[1])),
+        );
+      }
+    }
+  });
+
+  it("calculates grade 1 arithmetic and grade 4 expressions and word problems", () => {
+    for (let sample = 0; sample < 100; sample += 1) {
+      for (const typeId of ["addition", "subtraction"] as const) {
+        const question = generateQuestion(1, typeId, "medium");
+        const match = question.prompt.match(/^(\d+) ([+-]) (\d+) = \?$/);
+        expect(match).not.toBeNull();
+        if (match) {
+          const expected =
+            match[2] === "+"
+              ? Number(match[1]) + Number(match[3])
+              : Number(match[1]) - Number(match[3]);
+          expect(question.answer).toBe(String(expected));
+        }
+      }
+
+      const expression = generateQuestion(4, "expressions", "easy");
+      const expressionMatch = expression.prompt.match(
+        /^(\d+) ([+-]) (\d+) ([+-]) (\d+) = \?$/,
+      );
+      expect(expressionMatch).not.toBeNull();
+      if (expressionMatch) {
+        const [, first, firstOperator, second, secondOperator, third] =
+          expressionMatch;
+        const middle =
+          firstOperator === "+"
+            ? Number(first) + Number(second)
+            : Number(first) - Number(second);
+        const expected =
+          secondOperator === "+"
+            ? middle + Number(third)
+            : middle - Number(third);
+        expect(expression.answer).toBe(String(expected));
+      }
+
+      const equation = generateQuestion(4, "equations", "easy");
+      const equationMatch = equation.prompt.match(/^x \+ (\d+) = (\d+)$/);
+      expect(equationMatch).not.toBeNull();
+      if (equationMatch) {
+        expect(equation.answer).toBe(
+          String(Number(equationMatch[2]) - Number(equationMatch[1])),
+        );
+      }
+
+      for (const difficulty of GRADE_DIFFICULTIES[4]) {
+        const wordProblem = generateQuestion(4, "word_problem", difficulty);
+        const numbers = wordProblem.prompt.match(/\d+/g)?.map(Number) ?? [];
+        let expected: number;
+        if (wordProblem.prompt.startsWith("У кошику")) {
+          expected = numbers[0] - numbers[1];
+        } else if (wordProblem.prompt.startsWith("У хлопчика")) {
+          expected = numbers[0] + numbers[1];
+        } else if (wordProblem.prompt.startsWith("У класі")) {
+          expected = numbers[0] + numbers[1] - numbers[2];
+        } else {
+          expected = numbers[2] - numbers[0] * numbers[1];
+        }
+        expect(wordProblem.answer).toBe(String(expected));
+      }
+    }
+  });
+
+  it("rejects an invalid grade passed at runtime", () => {
+    expect(() => generateQuestion(5 as Grade, "addition", "easy")).toThrow(
+      "No generator for grade 5",
+    );
+    expect(() => generateTestQuestions(5 as Grade, 1, new Set())).toThrow(
+      "No task types are available for grade 5",
+    );
   });
 });

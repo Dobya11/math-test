@@ -583,6 +583,160 @@ select.info-item option:hover {
   font-weight: 700;
 }
 
+.classroom-screen {
+  padding: 1rem 1rem 2rem;
+}
+
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.dashboard-heading h1 {
+  margin-bottom: 0.25rem;
+}
+
+.secondary-button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-color-fg);
+}
+
+.class-code {
+  font-size: 1.5rem;
+  letter-spacing: 0.12em;
+}
+
+.class-code-input {
+  max-width: 15rem;
+  font-size: 1.4rem;
+  letter-spacing: 0.2em;
+}
+
+.assignment-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.topic-picker {
+  display: grid;
+  gap: 0.75rem;
+  border: 0;
+}
+
+.topic-picker legend {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.topic-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.topic-option:has(input:checked) {
+  border-color: var(--text-color-fg);
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.topic-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--primary-color-fg);
+}
+
+.assignment-total {
+  font-size: 1.15rem;
+}
+
+.student-row {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.student-row > span {
+  font-size: 1.5rem;
+}
+
+.assignment-item {
+  align-items: center;
+}
+
+.assignment-item button:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.student-details,
+.setup-notice {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 38rem);
+  max-height: min(90vh, 50rem);
+  overflow: auto;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: var(--primary-color);
+  color: var(--text-color-fg);
+}
+
+.student-details > .secondary-button {
+  justify-self: end;
+}
+
+.setup-notice {
+  align-self: center;
+  margin: 1rem;
+}
+
+.setup-notice code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.auth-feedback {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  z-index: 30;
+  width: min(calc(100% - 2rem), 40rem);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--red-1);
+  color: var(--white-1);
+  transform: translateX(-50%);
+}
+
 .question-card {
   min-height: 400px;
 

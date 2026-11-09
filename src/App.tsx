@@ -1,144 +1,159 @@
-//#region "init"
 import { Analytics } from "@vercel/analytics/react";
-
 import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import "./App.css";
-
-import Tests from "./Tests.tsx";
-import Profile, { TeacherOverview } from "./Profie.tsx";
-import Test from "./Test.tsx";
 import AccountGate from "./AccountGate.tsx";
+import { StudentDashboard, TeacherDashboard } from "./Classroom.tsx";
+import { getAccountProfile } from "./ts/classroom.ts";
+import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
+import type { User } from "./ts/types.ts";
 
-import type { Grade, User } from "./ts/types.ts";
-import { getCurrentAccount, signOut } from "./ts/accounts.ts";
-
-type Screen = "tests" | "overview" | "profile" | "test";
-
-const screenTitles: Record<Screen, string> = {
-  tests: "Тести",
-  overview: "Успішність",
-  profile: "Профіль",
-  test: "Тест",
-};
-//#endregion
 function App() {
-  const [account, setAccount] = useState<User | null>(getCurrentAccount);
-  const [screen, setScreen] = useState<Screen>(
-    getCurrentAccount()?.role === "teacher" ? "overview" : "tests",
-  );
-
-  const [testSettings, setTestSettings] = useState<{
-    grade: Grade;
-    questionCount: number;
-    timeLimitSec: number | null;
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<{
+    userId: string;
+    account: User;
   } | null>(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [profileError, setProfileError] = useState("");
+  const account =
+    profile && session && profile.userId === session.user.id
+      ? profile.account
+      : null;
+
+  const inviteCode =
+    window.location.pathname.match(/^\/class\/(\d{6})\/?$/)?.[1] ?? "";
 
   useEffect(() => {
-    if (!account) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setScreen(account.role === "teacher" ? "overview" : "tests");
-  }, [account]);
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
-  const screens: Screen[] =
-    account?.role === "teacher"
-      ? ["overview", "profile"]
-      : ["tests", "profile"];
+    let active = true;
+    const client = getSupabase();
+    void client.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setProfileError(error.message);
+        setSession(data.session);
+        setAuthReady(true);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setProfileError(
+          error instanceof Error ? error.message : "Не вдалося перевірити сесію.",
+        );
+        setAuthReady(true);
+      });
 
-  const index = screens.indexOf(screen);
-
-  function handleSignOut() {
-    const nextScreen = account?.role === "teacher" ? "overview" : "tests";
-    signOut();
-    setAccount(null);
-    setScreen(nextScreen);
-    setTestSettings(null);
-  }
-
-  function startTest(
-    grade: Grade,
-    questionCount: number,
-    timeLimitSec: number | null,
-  ) {
-    setTestSettings({
-      grade,
-      questionCount,
-      timeLimitSec,
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setProfileError("");
     });
 
-    setScreen("test");
-  }
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
-  if (!account) {
-    return (
-      <div className="App">
-        <Analytics />
-        <AccountGate
-          onAuthenticated={(signedInAccount) => setAccount(signedInAccount)}
-        />
-      </div>
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    let active = true;
+    void getAccountProfile(session.user.id)
+      .then((profile) => {
+        if (active) {
+          setProfile({ userId: session.user.id, account: profile });
+          setProfileError("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setProfileError(
+            error instanceof Error
+              ? error.message
+              : "Не вдалося завантажити профіль.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  async function handleSignOut() {
+    const confirmed = window.confirm(
+      "Це анонімний профіль. Після виходу його UUID не можна буде відновити на іншому пристрої. Ви впевнені, що хочете вийти?",
     );
+    if (!confirmed) return;
+    const { error } = await getSupabase().auth.signOut();
+    if (error) {
+      setProfileError(error.message);
+      return;
+    }
+    setProfileError("");
   }
 
   return (
     <div className="App">
       <Analytics />
-      <main>
-        {screen === "tests" && (
-          <Tests
-            initialGrade={testSettings?.grade ?? 1}
-            onStartTest={startTest}
-          />
-        )}
-
-        {screen === "overview" && <TeacherOverview user={account} />}
-
-        {screen === "test" && testSettings && (
-          <Test
-            grade={testSettings.grade}
-            questionCount={testSettings.questionCount}
-            timeLimitSec={testSettings.timeLimitSec}
-            onExit={() => setScreen("tests")}
-          />
-        )}
-
-        {screen === "profile" && (
-          <Profile user={account} onSignOut={handleSignOut} />
-        )}
-      </main>
-
-      {screen === "test" ? (
-        <header className="test-nav">
-          <button type="button" onClick={() => setScreen("tests")}>
-            Назад до тестів
-          </button>
-        </header>
-      ) : (
-        <header>
-          <nav aria-label="Основна навігація">
-            <div
-              className="selector"
-              style={
-                {
-                  "--index": index,
-                } as React.CSSProperties
-              }
+      {!isSupabaseConfigured ? (
+        <main className="account-main">
+          <section className="setup-notice">
+            <h1>Потрібно налаштувати Supabase</h1>
+            <p>
+              Створіть файл <code>.env.local</code> за прикладом{" "}
+              <code>.env.example</code>, заповніть URL і публічний anon key
+              проєкту Supabase, а потім виконайте SQL-схему з{" "}
+              <code>supabase/schema.sql</code>.
+            </p>
+          </section>
+        </main>
+      ) : !authReady ? (
+        <main className="account-main">
+          <p>Перевірка облікового запису…</p>
+        </main>
+      ) : session && !account ? (
+        <main className="account-main">
+          <section className="setup-notice">
+            <h1>Не вдалося відкрити профіль</h1>
+            <p role="alert">
+              {profileError || "Зачекайте, профіль завантажується."}
+            </p>
+            <button type="button" onClick={() => void handleSignOut()}>
+              Вийти
+            </button>
+          </section>
+        </main>
+      ) : account ? (
+        <>
+          {profileError && (
+            <p className="auth-feedback" role="alert">
+              {profileError}
+            </p>
+          )}
+          {account.role === "teacher" ? (
+            <TeacherDashboard
+              user={account}
+              onSignOut={() => void handleSignOut()}
             />
-
-            <button
-              aria-current={screen === screens[0] ? "page" : undefined}
-              onClick={() => setScreen(screens[0])}
-            >
-              {screenTitles[screens[0]]}
-            </button>
-
-            <button
-              aria-current={screen === screens[1] ? "page" : undefined}
-              onClick={() => setScreen(screens[1])}
-            >
-              {screenTitles[screens[1]]}
-            </button>
-          </nav>
-        </header>
+          ) : (
+            <StudentDashboard
+              user={account}
+              inviteCode={inviteCode}
+              onSignOut={() => void handleSignOut()}
+            />
+          )}
+        </>
+      ) : (
+        <AccountGate inviteCode={inviteCode} />
       )}
     </div>
   );
