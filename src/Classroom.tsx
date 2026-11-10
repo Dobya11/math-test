@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PageCard from "./components/Card.tsx";
 import {
+  completeAssignmentAttempt,
   createAssignment,
   createClassroom,
+  getAssignmentQuestions,
   getStudentSnapshot,
   getTeacherSnapshot,
   joinClassroom,
+  startAssignmentAttempt,
+  submitAssignmentAnswer,
   subscribeToClassChanges,
+  type Assignment,
+  type AssignmentQuestion,
   type StudentSnapshot,
   type TeacherSnapshot,
 } from "./ts/classroom.ts";
-import type { User } from "./ts/types.ts";
+import Test from "./Test.tsx";
+import Tests from "./Tests.tsx";
+import type { Grade, User } from "./ts/types.ts";
 
 const TOPICS = Array.from({ length: 10 }, (_, index) => `Тема ${index + 1}`);
 const QUESTIONS_PER_TOPIC = [4, 8, 12] as const;
@@ -60,10 +68,7 @@ function TeacherDashboard({
     // Load the snapshot after mount; refresh updates state after its async request.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
-    const unsubscribe = subscribeToClassChanges(
-      () => void refresh(),
-      setError,
-    );
+    const unsubscribe = subscribeToClassChanges(() => void refresh(), setError);
     return unsubscribe;
   }, [refresh]);
 
@@ -144,20 +149,32 @@ function TeacherDashboard({
             <h1>{user.name}</h1>
             <p>Кабінет учителя · 2 клас</p>
           </div>
-          <button type="button" className="secondary-button" onClick={onSignOut}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onSignOut}
+          >
             Вийти
           </button>
         </div>
       </PageCard>
 
       {error && <ErrorMessage message={error} />}
-      {loading && <PageCard type="analysis"><p>Завантаження класу…</p></PageCard>}
+      {loading && (
+        <PageCard type="analysis">
+          <p>Завантаження класу…</p>
+        </PageCard>
+      )}
 
       {!loading && snapshot && !snapshot.classroom && (
         <PageCard type="analysis">
           <h2>Створіть свій клас</h2>
           <p>Класу буде призначено унікальний код для запрошення учнів.</p>
-          <button type="button" disabled={saving} onClick={handleCreateClassroom}>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleCreateClassroom}
+          >
             Створити клас
           </button>
         </PageCard>
@@ -169,7 +186,9 @@ function TeacherDashboard({
             <h2>Ваш клас · 2 клас</h2>
             <p>
               Код запрошення:{" "}
-              <strong className="class-code">{snapshot.classroom.class_code}</strong>
+              <strong className="class-code">
+                {snapshot.classroom.class_code}
+              </strong>
             </p>
             <p>
               Посилання для учнів:{" "}
@@ -207,7 +226,10 @@ function TeacherDashboard({
               aria-valuemin={0}
               aria-valuemax={100}
             >
-              <div className="progress-bar" style={{ width: `${classProgress}%` }} />
+              <div
+                className="progress-bar"
+                style={{ width: `${classProgress}%` }}
+              />
             </div>
             {snapshot.members.length === 0 ? (
               <p>Ще ніхто не приєднався до класу.</p>
@@ -246,8 +268,8 @@ function TeacherDashboard({
           <PageCard type="analysis">
             <h2>Створити завдання</h2>
             <p>
-              Оберіть теми-заглушки та кількість завдань. Загальна кількість
-              оновлюється автоматично.
+              Для кожної теми учні отримають приклади на додавання з вибором
+              правильної відповіді.
             </p>
             <form className="assignment-form" onSubmit={handleCreateAssignment}>
               <label className="info-field">
@@ -316,28 +338,48 @@ function TeacherDashboard({
               <p>Створених завдань поки немає.</p>
             ) : (
               <div className="history-list">
-                {snapshot.assignments.map((assignment) => (
-                  <div className="history-item" key={assignment.id}>
-                    <div>
-                      <strong>{assignment.title}</strong>
-                      <p>{assignment.topics.join(", ")}</p>
-                      <p>
-                        {new Date(assignment.created_at).toLocaleDateString(
-                          "uk-UA",
-                        )}
-                      </p>
+                {snapshot.assignments.map((assignment) => {
+                  const completed = snapshot.attempts.filter(
+                    (attempt) =>
+                      attempt.assignment_id === assignment.id &&
+                      attempt.status === "completed",
+                  );
+                  const answered = completed.reduce(
+                    (sum, attempt) => sum + attempt.total_questions,
+                    0,
+                  );
+                  const correct = completed.reduce(
+                    (sum, attempt) => sum + (attempt.score ?? 0),
+                    0,
+                  );
+                  const percentage = answered
+                    ? Math.round((correct / answered) * 100)
+                    : 0;
+
+                  return (
+                    <div className="history-item" key={assignment.id}>
+                      <div>
+                        <strong>{assignment.title}</strong>
+                        <p>{assignment.topics.join(", ")}</p>
+                        <p>
+                          {assignment.total_questions} завдань · завершено{" "}
+                          {completed.length} спроб
+                        </p>
+                      </div>
+                      <div className="assignment-analytics">
+                        <strong>{percentage}%</strong>
+                        <p>
+                          {answered
+                            ? `${correct} з ${answered} правильно`
+                            : "Ще немає результатів"}
+                        </p>
+                      </div>
                     </div>
-                    <strong>{assignment.total_questions} завдань</strong>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-            <p className="account-note">
-              Теми поки є заглушками: генерація та проходження завдань буде
-              доступна після визначення їхнього змісту.
-            </p>
           </PageCard>
-
         </>
       )}
 
@@ -372,24 +414,268 @@ function TeacherDashboard({
                         <strong>{assignment?.title ?? "Завдання"}</strong>
                         <p>
                           {attempt.status === "completed"
-                            ? "Завершено"
+                            ? `Завершено · ${attempt.completed_at ? new Date(attempt.completed_at).toLocaleString("uk-UA") : ""}`
                             : "У процесі"}
                         </p>
                       </div>
-                      <strong>
-                        {attempt.score ?? 0} / {attempt.total_questions}
-                      </strong>
+                      <div className="assignment-analytics">
+                        <strong>
+                          {attempt.score ?? 0} з {attempt.total_questions}
+                        </strong>
+                        <p>
+                          {attempt.status === "completed" &&
+                          attempt.total_questions > 0
+                            ? `${Math.round(((attempt.score ?? 0) / attempt.total_questions) * 100)}% правильно`
+                            : "Ще не завершено"}
+                        </p>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
-            <p className="account-note">
-              Деталі окремих відповідей з’являться після підключення змісту тем.
-            </p>
           </section>
         </div>
       )}
+    </div>
+  );
+}
+
+function AssignmentTest({
+  assignment,
+  onExit,
+}: {
+  assignment: Assignment;
+  onExit: () => void;
+}) {
+  const [questions, setQuestions] = useState<AssignmentQuestion[]>([]);
+  const [attemptId, setAttemptId] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<boolean[]>([]);
+  const [feedback, setFeedback] = useState<boolean | null>(null);
+  const [result, setResult] = useState<boolean[] | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleStart() {
+    setBusy(true);
+    setError("");
+    try {
+      const nextQuestions = await getAssignmentQuestions(assignment.id);
+      if (nextQuestions.length === 0) {
+        throw new Error(
+          "Для цього завдання ще немає вправ. Попроси вчителя створити нове.",
+        );
+      }
+      const nextAttemptId = await startAssignmentAttempt(assignment.id);
+      setQuestions(nextQuestions);
+      setAttemptId(nextAttemptId);
+      setCurrentIndex(0);
+      setAnswers([]);
+      setFeedback(null);
+      setResult(null);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не вдалося почати завдання.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAnswer(answer: "Правильно" | "Неправильно") {
+    const question = questions[currentIndex];
+    if (!question || !attemptId || feedback !== null) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      const isCorrect = await submitAssignmentAnswer(
+        attemptId,
+        question.id,
+        answer,
+      );
+      setAnswers((current) => [...current, isCorrect]);
+      setFeedback(isCorrect);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не вдалося зберегти відповідь.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleNext() {
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex((index) => index + 1);
+      setFeedback(null);
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    try {
+      await completeAssignmentAttempt(attemptId);
+      setResult(answers);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не вдалося завершити завдання.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const topicStats =
+    result?.reduce((stats, isCorrect, index) => {
+      const topic = questions[index].topic;
+      const current = stats.get(topic) ?? { total: 0, correct: 0 };
+      current.total += 1;
+      if (isCorrect) current.correct += 1;
+      stats.set(topic, current);
+      return stats;
+    }, new Map<string, { total: number; correct: number }>()) ??
+    new Map<string, { total: number; correct: number }>();
+
+  if (result) {
+    const correct = result.filter(Boolean).length;
+    const percentage = Math.round((correct / result.length) * 100);
+
+    return (
+      <div className="screen classroom-screen">
+        <PageCard type="header">
+          <div className="dashboard-heading">
+            <h1>Результат</h1>
+            <button type="button" className="secondary-button" onClick={onExit}>
+              До завдань
+            </button>
+          </div>
+        </PageCard>
+        <PageCard type="analysis">
+          <h2>{assignment.title}</h2>
+          <strong className="result-score">
+            {correct} з {result.length}
+          </strong>
+          <p>{percentage}% правильних відповідей</p>
+          <div className="skill-list">
+            {[...topicStats].map(([topic, stat]) => {
+              const topicPercentage = Math.round(
+                (stat.correct / stat.total) * 100,
+              );
+              return (
+                <div className="skill-item" key={topic}>
+                  <div className="skill-item__label">
+                    <strong>{topic}</strong>
+                    <span>
+                      {stat.correct} з {stat.total} правильно
+                    </span>
+                  </div>
+                  <div
+                    className="progress progress--small"
+                    role="progressbar"
+                    aria-label={topic}
+                    aria-valuenow={topicPercentage}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className="progress-bar"
+                      style={{ width: `${topicPercentage}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </PageCard>
+      </div>
+    );
+  }
+
+  if (!attemptId) {
+    return (
+      <div className="screen classroom-screen">
+        <PageCard type="header">
+          <div className="dashboard-heading">
+            <h1>{assignment.title}</h1>
+            <button type="button" className="secondary-button" onClick={onExit}>
+              Назад
+            </button>
+          </div>
+        </PageCard>
+        <PageCard type="test">
+          <p>{assignment.topics.join(", ")}</p>
+          <p>У кожному прикладі обери, чи правильно пораховано суму.</p>
+          {error && <ErrorMessage message={error} />}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleStart()}
+          >
+            {busy ? "Завантаження…" : "Почати"}
+          </button>
+        </PageCard>
+      </div>
+    );
+  }
+
+  const question = questions[currentIndex];
+
+  return (
+    <div className="screen classroom-screen">
+      <PageCard type="header">
+        <div className="dashboard-heading">
+          <h1>{assignment.title}</h1>
+          <span>
+            {currentIndex + 1} з {questions.length}
+          </span>
+        </div>
+      </PageCard>
+      <PageCard type="test">
+        <p className="task-type">{question.topic}</p>
+        <h2>{question.prompt}</h2>
+        {feedback !== null && (
+          <p className="result-message" role="status">
+            {feedback ? "Правильно!" : "Неправильно. Спробуй наступне!"}
+          </p>
+        )}
+        {error && <ErrorMessage message={error} />}
+        {feedback === null ? (
+          <div className="answer-buttons answer-buttons--text">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleAnswer("Правильно")}
+            >
+              Правильно
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleAnswer("Неправильно")}
+            >
+              Неправильно
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleNext()}
+          >
+            {currentIndex + 1 === questions.length
+              ? "Показати результат"
+              : "Наступне завдання"}
+          </button>
+        )}
+      </PageCard>
     </div>
   );
 }
@@ -403,11 +689,21 @@ function StudentDashboard({
   inviteCode: string;
   onSignOut: () => void;
 }) {
+  type StudentView = "class" | "practice" | "test";
   const [snapshot, setSnapshot] = useState<StudentSnapshot | null>(null);
   const [code, setCode] = useState(inviteCode);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [studentView, setStudentView] = useState<StudentView>("class");
+  const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(
+    null,
+  );
+  const [practiceSettings, setPracticeSettings] = useState<{
+    grade: Grade;
+    questionCount: number;
+    timeLimitSec: number | null;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -428,10 +724,7 @@ function StudentDashboard({
     // Load the snapshot after mount; refresh updates state after its async request.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
-    const unsubscribe = subscribeToClassChanges(
-      () => void refresh(),
-      setError,
-    );
+    const unsubscribe = subscribeToClassChanges(() => void refresh(), setError);
     return unsubscribe;
   }, [refresh]);
 
@@ -454,9 +747,51 @@ function StudentDashboard({
     }
   }
 
-  const completedAttempts = snapshot?.attempts.filter(
-    ({ status }) => status === "completed",
-  ).length;
+  function startPractice(
+    grade: Grade,
+    questionCount: number,
+    timeLimitSec: number | null,
+  ) {
+    setPracticeSettings({ grade, questionCount, timeLimitSec });
+    setStudentView("test");
+  }
+
+  function exitAssignment() {
+    setActiveAssignment(null);
+    void refresh();
+  }
+
+  if (activeAssignment) {
+    return (
+      <AssignmentTest assignment={activeAssignment} onExit={exitAssignment} />
+    );
+  }
+
+  if (studentView === "practice") {
+    return (
+      <Tests
+        userId={user.id}
+        initialGrade={2}
+        onBackToClass={() => setStudentView("class")}
+        onStartTest={startPractice}
+      />
+    );
+  }
+
+  if (studentView === "test" && practiceSettings) {
+    return (
+      <Test
+        userId={user.id}
+        grade={practiceSettings.grade}
+        questionCount={practiceSettings.questionCount}
+        timeLimitSec={practiceSettings.timeLimitSec}
+        onExit={() => setStudentView("practice")}
+      />
+    );
+  }
+
+  const completedAttempts =
+    snapshot?.attempts.filter(({ status }) => status === "completed") ?? [];
 
   return (
     <div className="screen classroom-screen">
@@ -464,21 +799,41 @@ function StudentDashboard({
         <div className="dashboard-heading">
           <div>
             <h1>{user.name}</h1>
-            <p>Кабінет учня · 2 клас</p>
+            <p>Учень · 2 клас</p>
           </div>
-          <button type="button" className="secondary-button" onClick={onSignOut}>
-            Вийти
-          </button>
+          <div className="dashboard-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setStudentView("practice")}
+            >
+              Тренуватися
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onSignOut}
+            >
+              Вийти
+            </button>
+          </div>
         </div>
       </PageCard>
 
       {error && <ErrorMessage message={error} />}
-      {loading && <PageCard type="analysis"><p>Завантаження…</p></PageCard>}
+      {loading && (
+        <PageCard type="analysis">
+          <p>Завантаження…</p>
+        </PageCard>
+      )}
 
       {!loading && snapshot && !snapshot.classroom && (
         <PageCard type="analysis">
           <h2>Приєднатися до класу</h2>
-          <p>Введіть шестизначний код від учителя або відкрийте його посилання.</p>
+          <p>
+            Уведи код класу від учителя. Якщо складно — попроси його допомогти
+            або відкрий посилання.
+          </p>
           <form className="assignment-form" onSubmit={handleJoinClass}>
             <label className="info-field">
               <span>Код класу</span>
@@ -513,35 +868,92 @@ function StudentDashboard({
               <p>Учитель ще не створив завдань.</p>
             ) : (
               <div className="history-list">
-                {snapshot.assignments.map((assignment) => (
-                  <div className="history-item assignment-item" key={assignment.id}>
-                    <div>
-                      <strong>{assignment.title}</strong>
-                      <p>{assignment.topics.join(", ")}</p>
-                      <p>
-                        {assignment.total_questions} завдань · створено{" "}
-                        {new Date(assignment.created_at).toLocaleDateString(
-                          "uk-UA",
-                        )}
-                      </p>
+                {snapshot.assignments.map((assignment) => {
+                  const attempts = snapshot.attempts.filter(
+                    (attempt) => attempt.assignment_id === assignment.id,
+                  );
+                  const completed = attempts.filter(
+                    ({ status }) => status === "completed",
+                  );
+                  const latest = completed[0];
+                  const percentage =
+                    latest && latest.total_questions > 0
+                      ? Math.round(
+                          ((latest.score ?? 0) / latest.total_questions) * 100,
+                        )
+                      : null;
+
+                  return (
+                    <div
+                      className="history-item assignment-item"
+                      key={assignment.id}
+                    >
+                      <div>
+                        <strong>{assignment.title}</strong>
+                        <p>{assignment.topics.join(", ")}</p>
+                        <p>
+                          {assignment.total_questions} завдань · спроб:{" "}
+                          {completed.length}
+                          {percentage !== null
+                            ? ` · останній результат ${percentage}%`
+                            : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveAssignment(assignment)}
+                      >
+                        Почати
+                      </button>
                     </div>
-                    <button type="button" disabled>
-                      Скоро
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <p className="account-note">
-              Завдання не можна почати, доки навчальні теми не матимуть змісту.
-              Це також не дозволяє показати учням штучні чи невідповідні вправи.
+              У кожному завданні потрібно визначити, чи правильно пораховано
+              суму.
             </p>
           </PageCard>
           <PageCard type="analysis">
             <h2>Мої результати</h2>
             <p>
-              Завершених спроб: <strong>{completedAttempts ?? 0}</strong>
+              Завершених спроб: <strong>{completedAttempts.length}</strong>
             </p>
+            {completedAttempts.length > 0 && (
+              <div className="history-list">
+                {completedAttempts.map((attempt) => {
+                  const assignment = snapshot.assignments.find(
+                    ({ id }) => id === attempt.assignment_id,
+                  );
+                  const percentage = attempt.total_questions
+                    ? Math.round(
+                        ((attempt.score ?? 0) / attempt.total_questions) * 100,
+                      )
+                    : 0;
+                  return (
+                    <div className="history-item" key={attempt.id}>
+                      <div>
+                        <strong>{assignment?.title ?? "Завдання"}</strong>
+                        <p>
+                          {attempt.completed_at
+                            ? new Date(attempt.completed_at).toLocaleString(
+                                "uk-UA",
+                              )
+                            : ""}
+                        </p>
+                      </div>
+                      <div>
+                        <strong>
+                          {attempt.score ?? 0} з {attempt.total_questions}
+                        </strong>
+                        <p>{percentage}% правильно</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </PageCard>
         </>
       )}

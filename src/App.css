@@ -444,6 +444,7 @@ select.info-item option:hover {
 
 .history-list {
   display: grid;
+  gap: 0.75rem;
 }
 
 .history-item {
@@ -584,7 +585,7 @@ select.info-item option:hover {
 }
 
 .classroom-screen {
-  padding: 1rem 0.5rem 2rem;
+  padding: 0 0.5rem 2rem;
 }
 
 .classroom-screen > .p-card {
@@ -596,6 +597,13 @@ select.info-item option:hover {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .dashboard-heading h1 {
@@ -682,6 +690,29 @@ select.info-item option:hover {
 
 .assignment-item {
   align-items: center;
+}
+
+.assignment-analytics {
+  min-width: max-content;
+  text-align: right;
+}
+
+.test-history-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.test-history-item > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.test-history-details {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border-radius: 0 0 1rem 1rem;
+  background-color: var(--secondary-color-fg);
 }
 
 .assignment-item button:disabled,
@@ -835,6 +866,15 @@ button:disabled {
 
   font-size: 2rem;
   font-weight: 700;
+}
+
+.answer-buttons--text button {
+  width: auto;
+  min-width: min(45%, 10rem);
+  height: auto;
+  min-height: 4rem;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
 }
 
 .answer-buttons button.selected {

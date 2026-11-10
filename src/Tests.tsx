@@ -5,7 +5,9 @@ import type { Grade } from "./ts/types.ts";
 import { getResultsForGrade } from "./ts/storage.ts";
 
 interface TestsProps {
+  userId: string;
   initialGrade: Grade;
+  onBackToClass: () => void;
   onStartTest: (
     grade: Grade,
     questionCount: number,
@@ -13,14 +15,19 @@ interface TestsProps {
   ) => void;
 }
 
-function Tests({ initialGrade, onStartTest }: TestsProps) {
+function Tests({
+  userId,
+  initialGrade,
+  onBackToClass,
+  onStartTest,
+}: TestsProps) {
   const [grade, setGrade] = useState<Grade>(initialGrade);
   const [questionCount, setQuestionCount] = useState(8);
   const [timeLimit, setTimeLimit] = useState(15);
 
   const results = useMemo(() => {
-    return getResultsForGrade(grade);
-  }, [grade]);
+    return getResultsForGrade(grade, userId);
+  }, [grade, userId]);
 
   const lastResult = results[0];
 
@@ -39,7 +46,16 @@ function Tests({ initialGrade, onStartTest }: TestsProps) {
   return (
     <div className="screen">
       <PageCard type="header">
-        <h1>Тести з математики</h1>
+        <div className="dashboard-heading">
+          <h1>Тести з математики</h1>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onBackToClass}
+          >
+            До класу
+          </button>
+        </div>
       </PageCard>
 
       <PageCard type="test">
@@ -167,6 +183,81 @@ function Tests({ initialGrade, onStartTest }: TestsProps) {
                 })}
             </div>
           </>
+        )}
+      </PageCard>
+
+      <PageCard type="analysis">
+        <h2>Історія тестів</h2>
+        {results.length === 0 ? (
+          <p>Тут з’являться результати твоїх тестів.</p>
+        ) : (
+          <div className="test-history-list">
+            {results.map((result, index) => {
+              const resultPercentage = result.totalQuestions
+                ? Math.round(
+                    (result.correctAnswers / result.totalQuestions) * 100,
+                  )
+                : 0;
+
+              return (
+                <details className="test-history-item" key={result.id}>
+                  <summary className="history-item">
+                    <div>
+                      <strong>
+                        {result.grade} клас · тест {results.length - index}
+                      </strong>
+                      <p>{new Date(result.date).toLocaleString("uk-UA")}</p>
+                    </div>
+                    <div>
+                      <strong>
+                        {result.correctAnswers} з {result.totalQuestions}
+                      </strong>
+                      <p>{resultPercentage}% правильно</p>
+                    </div>
+                  </summary>
+                  <div className="test-history-details">
+                    <p className="result-meta">
+                      Час: {Math.floor(result.timeTakenMs / 60000)} хв{" "}
+                      {Math.floor((result.timeTakenMs % 60000) / 1000)} с
+                    </p>
+                    <div className="skill-list">
+                      {result.typeStats
+                        .filter((stat) => stat.total > 0)
+                        .map((stat) => {
+                          const skillPercentage = Math.round(
+                            (stat.correct / stat.total) * 100,
+                          );
+
+                          return (
+                            <div className="skill-item" key={stat.typeId}>
+                              <div className="skill-item__label">
+                                <strong>{stat.typeLabel}</strong>
+                                <span>
+                                  {stat.correct} з {stat.total} правильно
+                                </span>
+                              </div>
+                              <div
+                                className="progress progress--small"
+                                role="progressbar"
+                                aria-label={stat.typeLabel}
+                                aria-valuenow={skillPercentage}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                              >
+                                <div
+                                  className="progress-bar"
+                                  style={{ width: `${skillPercentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
         )}
       </PageCard>
     </div>

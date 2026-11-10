@@ -1,5 +1,4 @@
 import type { Grade, TestResult, Difficulty } from "./types.ts";
-import { getActiveAccountId } from "./accounts.ts";
 
 const STORAGE_KEY = "mathTest_history_v1";
 const MAX_HISTORY = 30;
@@ -41,9 +40,8 @@ function isTestResult(value: unknown): value is TestResult {
   );
 }
 
-function getHistoryKey(): string {
-  const accountId = getActiveAccountId();
-  return accountId ? `${STORAGE_KEY}_${accountId}` : STORAGE_KEY;
+function getHistoryKey(accountId: string): string {
+  return `${STORAGE_KEY}_${accountId}`;
 }
 
 function parseHistory(raw: string | null, key: string): TestResult[] {
@@ -76,16 +74,12 @@ function loadHistoryFromKey(key: string): TestResult[] {
   }
 }
 
-export function loadHistory(): TestResult[] {
-  return loadHistoryFromKey(getHistoryKey());
+export function loadHistory(accountId: string): TestResult[] {
+  return loadHistoryFromKey(getHistoryKey(accountId));
 }
 
-export function loadHistoryForAccount(accountId: string): TestResult[] {
-  return loadHistoryFromKey(`${STORAGE_KEY}_${accountId}`);
-}
-
-export function saveResult(result: TestResult): void {
-  const key = getHistoryKey();
+export function saveResult(result: TestResult, accountId: string): void {
+  const key = getHistoryKey(accountId);
   let history: TestResult[];
   try {
     history = parseHistory(localStorage.getItem(key), key);
@@ -105,12 +99,18 @@ export function saveResult(result: TestResult): void {
   }
 }
 
-export function getResultsForGrade(grade: Grade): TestResult[] {
-  return loadHistory().filter((r) => r.grade === grade);
+export function getResultsForGrade(
+  grade: Grade,
+  accountId: string,
+): TestResult[] {
+  return loadHistory(accountId).filter((r) => r.grade === grade);
 }
 
-export function getWeakTypeIds(grade: Grade): Set<string> {
-  const recent = getResultsForGrade(grade).slice(0, SESSIONS_TO_CONSIDER);
+export function getWeakTypeIds(grade: Grade, accountId: string): Set<string> {
+  const recent = getResultsForGrade(grade, accountId).slice(
+    0,
+    SESSIONS_TO_CONSIDER,
+  );
   const totals: Record<string, { sum: number; count: number }> = {};
 
   for (const result of recent) {
@@ -142,9 +142,9 @@ export function levelFromStats(
   return Math.max(1, Math.min(5, Math.round(raw * 4) + 1));
 }
 
-export function clearHistory(): void {
+export function clearHistory(accountId: string): void {
   try {
-    localStorage.removeItem(getHistoryKey());
+    localStorage.removeItem(getHistoryKey(accountId));
   } catch (error) {
     console.error("Unable to clear stored test history.", error);
   }

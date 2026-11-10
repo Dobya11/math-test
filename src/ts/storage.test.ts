@@ -1,18 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TestResult } from "./types.ts";
 
-const { getActiveAccountId } = vi.hoisted(() => ({
-  getActiveAccountId: vi.fn<() => string | null>(),
-}));
-
-vi.mock("./accounts.ts", () => ({ getActiveAccountId }));
-
 import {
   getResultsForGrade,
   getWeakTypeIds,
   levelFromStats,
   loadHistory,
-  loadHistoryForAccount,
   saveResult,
 } from "./storage.ts";
 
@@ -73,7 +66,6 @@ let memoryStorage: MemoryStorage;
 beforeEach(() => {
   memoryStorage = new MemoryStorage();
   vi.stubGlobal("localStorage", memoryStorage);
-  getActiveAccountId.mockReturnValue("student-a");
 });
 
 afterEach(() => {
@@ -83,18 +75,20 @@ afterEach(() => {
 
 describe("test result storage", () => {
   it("stores results per account and filters them by grade", () => {
-    saveResult(createResult("grade-1"));
+    saveResult(createResult("grade-1"), "student-a");
     memoryStorage.setItem(
       "mathTest_history_v1_student-b",
       JSON.stringify([createResult("other-account", 2)]),
     );
 
-    expect(loadHistory()).toHaveLength(1);
-    expect(loadHistoryForAccount("student-b").map(({ id }) => id)).toEqual([
+    expect(loadHistory("student-a")).toHaveLength(1);
+    expect(loadHistory("student-b").map(({ id }) => id)).toEqual([
       "other-account",
     ]);
-    expect(getResultsForGrade(1).map(({ id }) => id)).toEqual(["grade-1"]);
-    expect(getResultsForGrade(2)).toEqual([]);
+    expect(getResultsForGrade(1, "student-a").map(({ id }) => id)).toEqual([
+      "grade-1",
+    ]);
+    expect(getResultsForGrade(2, "student-a")).toEqual([]);
   });
 
   it("limits saved history to the newest 30 results", () => {
@@ -105,9 +99,9 @@ describe("test result storage", () => {
       ),
     );
 
-    saveResult(createResult("newest"));
+    saveResult(createResult("newest"), "student-a");
 
-    const history = loadHistory();
+    const history = loadHistory("student-a");
     expect(history).toHaveLength(30);
     expect(history[0].id).toBe("newest");
     expect(history.some(({ id }) => id === "old-29")).toBe(false);
@@ -120,7 +114,7 @@ describe("test result storage", () => {
       JSON.stringify([createResult("valid"), { id: "invalid" }]),
     );
 
-    expect(loadHistory().map(({ id }) => id)).toEqual(["valid"]);
+    expect(loadHistory("student-a").map(({ id }) => id)).toEqual(["valid"]);
     expect(error).toHaveBeenCalledOnce();
   });
 
@@ -129,7 +123,7 @@ describe("test result storage", () => {
       throw new Error("Quota exceeded");
     });
 
-    expect(() => saveResult(createResult("unsaved"))).toThrow(
+    expect(() => saveResult(createResult("unsaved"), "student-a")).toThrow(
       "не вдалося його зберегти",
     );
   });
@@ -152,7 +146,7 @@ describe("test result storage", () => {
       ]),
     );
 
-    expect(getWeakTypeIds(1)).toEqual(new Set(["addition"]));
+    expect(getWeakTypeIds(1, "student-a")).toEqual(new Set(["addition"]));
   });
 
   it("maps performance and difficulty to levels from 1 to 5", () => {

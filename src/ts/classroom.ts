@@ -16,6 +16,13 @@ export interface Assignment {
   created_at: string;
 }
 
+export interface AssignmentQuestion {
+  id: string;
+  position: number;
+  topic: string;
+  prompt: string;
+}
+
 export interface Attempt {
   id: string;
   assignment_id: string;
@@ -197,12 +204,65 @@ export async function createAssignment(input: {
   topics: string[];
   questionsPerTopic: 4 | 8 | 12;
 }): Promise<void> {
-  const { error } = await getSupabase().from("assignments").insert({
-    classroom_id: input.classroomId,
-    title: input.title.trim(),
-    topics: input.topics,
-    questions_per_topic: input.questionsPerTopic,
-    grade: 2,
+  const { data, error } = await getSupabase().rpc("create_assignment", {
+    p_classroom_id: input.classroomId,
+    p_title: input.title.trim(),
+    p_topics: input.topics,
+    p_questions_per_topic: input.questionsPerTopic,
+  });
+  if (error) throw error;
+  if (typeof data !== "string") {
+    throw new Error("Не вдалося створити завдання.");
+  }
+}
+
+export async function getAssignmentQuestions(
+  assignmentId: string,
+): Promise<AssignmentQuestion[]> {
+  const { data, error } = await getSupabase()
+    .from("generated_questions")
+    .select("id,position,topic,prompt")
+    .eq("assignment_id", assignmentId)
+    .order("position");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function startAssignmentAttempt(
+  assignmentId: string,
+): Promise<string> {
+  const { data, error } = await getSupabase().rpc("start_assignment_attempt", {
+    p_assignment_id: assignmentId,
+  });
+  if (error) throw error;
+  if (typeof data !== "string") {
+    throw new Error("Не вдалося почати виконання.");
+  }
+  return data;
+}
+
+export async function submitAssignmentAnswer(
+  attemptId: string,
+  questionId: string,
+  answer: "Правильно" | "Неправильно",
+): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc("submit_assignment_answer", {
+    p_attempt_id: attemptId,
+    p_question_id: questionId,
+    p_response: answer,
+  });
+  if (error) throw error;
+  if (typeof data !== "boolean") {
+    throw new Error("Не вдалося зберегти відповідь.");
+  }
+  return data;
+}
+
+export async function completeAssignmentAttempt(
+  attemptId: string,
+): Promise<void> {
+  const { error } = await getSupabase().rpc("complete_assignment_attempt", {
+    p_attempt_id: attemptId,
   });
   if (error) throw error;
 }

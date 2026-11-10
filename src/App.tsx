@@ -4,28 +4,11 @@ import type { Session } from "@supabase/supabase-js";
 import "./App.css";
 import AccountGate from "./AccountGate.tsx";
 import { StudentDashboard, TeacherDashboard } from "./Classroom.tsx";
-import Tests from "./Tests.tsx";
-import Test from "./Test.tsx";
-import Profile, { TeacherOverview } from "./Profie.tsx";
-import { getCurrentAccount, signOut } from "./ts/accounts.ts";
 import { getAccountProfile } from "./ts/classroom.ts";
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
-import type { Grade, User } from "./ts/types.ts";
-
-type LocalScreen = "tests" | "overview" | "profile" | "test";
+import type { User } from "./ts/types.ts";
 
 function App() {
-  const [localAccount, setLocalAccount] = useState<User | null>(() =>
-    isSupabaseConfigured ? null : getCurrentAccount(),
-  );
-  const [localScreen, setLocalScreen] = useState<LocalScreen>(
-    localAccount?.role === "teacher" ? "overview" : "tests",
-  );
-  const [testSettings, setTestSettings] = useState<{
-    grade: Grade;
-    questionCount: number;
-    timeLimitSec: number | null;
-  } | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<{
     userId: string;
@@ -42,9 +25,7 @@ function App() {
     window.location.pathname.match(/^\/class\/(\d{6})\/?$/)?.[1] ?? "";
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      return;
-    }
+    if (!isSupabaseConfigured) return;
 
     let active = true;
     const client = getSupabase();
@@ -59,7 +40,9 @@ function App() {
       .catch((error: unknown) => {
         if (!active) return;
         setProfileError(
-          error instanceof Error ? error.message : "Не вдалося перевірити сесію.",
+          error instanceof Error
+            ? error.message
+            : "Не вдалося перевірити профіль.",
         );
         setAuthReady(true);
       });
@@ -78,15 +61,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) {
-      return;
-    }
+    if (!session) return;
 
     let active = true;
     void getAccountProfile(session.user.id)
-      .then((profile) => {
+      .then((nextProfile) => {
         if (active) {
-          setProfile({ userId: session.user.id, account: profile });
+          setProfile({ userId: session.user.id, account: nextProfile });
           setProfileError("");
         }
       })
@@ -107,7 +88,7 @@ function App() {
 
   async function handleSignOut() {
     const confirmed = window.confirm(
-      "Це анонімний профіль. Після виходу його UUID не можна буде відновити на іншому пристрої. Ви впевнені, що хочете вийти?",
+      "Після виходу цей профіль не можна буде відновити. Вийти?",
     );
     if (!confirmed) return;
     const { error } = await getSupabase().auth.signOut();
@@ -118,111 +99,29 @@ function App() {
     setProfileError("");
   }
 
-  function handleLocalAuthenticated(account: User) {
-    setLocalAccount(account);
-    setLocalScreen(account.role === "teacher" ? "overview" : "tests");
-    setTestSettings(null);
-  }
-
-  function handleLocalSignOut() {
-    signOut();
-    setLocalAccount(null);
-    setTestSettings(null);
-  }
-
-  function startLocalTest(
-    grade: Grade,
-    questionCount: number,
-    timeLimitSec: number | null,
-  ) {
-    setTestSettings({ grade, questionCount, timeLimitSec });
-    setLocalScreen("test");
-  }
-
-  if (localAccount) {
-    const screens: LocalScreen[] =
-      localAccount.role === "teacher"
-        ? ["overview", "profile"]
-        : ["tests", "profile"];
-    const navigationIndex = screens.indexOf(localScreen);
-
-    return (
-      <div className="App local-layout">
-        <Analytics />
-        <main>
-          {localScreen === "tests" && (
-            <Tests
-              initialGrade={testSettings?.grade ?? 1}
-              onStartTest={startLocalTest}
-            />
-          )}
-          {localScreen === "overview" && (
-            <TeacherOverview user={localAccount} />
-          )}
-          {localScreen === "test" && testSettings && (
-            <Test
-              grade={testSettings.grade}
-              questionCount={testSettings.questionCount}
-              timeLimitSec={testSettings.timeLimitSec}
-              onExit={() => setLocalScreen("tests")}
-            />
-          )}
-          {localScreen === "profile" && (
-            <Profile user={localAccount} onSignOut={handleLocalSignOut} />
-          )}
-        </main>
-        <header className={localScreen === "test" ? "test-nav" : undefined}>
-          {localScreen === "test" ? (
-            <button type="button" onClick={() => setLocalScreen("tests")}>
-              Назад до тестів
-            </button>
-          ) : (
-            <nav aria-label="Основна навігація">
-              <div
-                className="selector"
-                style={
-                  {
-                    "--index": navigationIndex,
-                  } as React.CSSProperties
-                }
-              />
-              {screens.map((screen) => (
-                <button
-                  key={screen}
-                  type="button"
-                  aria-current={localScreen === screen ? "page" : undefined}
-                  onClick={() => setLocalScreen(screen)}
-                >
-                  {screen === "overview"
-                    ? "Успішність"
-                    : screen === "profile"
-                      ? "Профіль"
-                      : "Тести"}
-                </button>
-              ))}
-            </nav>
-          )}
-        </header>
-      </div>
-    );
-  }
-
   return (
     <div className="App">
       <Analytics />
-      {isSupabaseConfigured && !authReady ? (
+      {!isSupabaseConfigured ? (
         <main className="account-main">
-          <p>Перевірка облікового запису…</p>
+          <section className="setup-notice">
+            <h1>Застосунок поки недоступний</h1>
+            <p>Попроси вчителя перевірити підключення та спробуй ще раз.</p>
+          </section>
         </main>
-      ) : isSupabaseConfigured && session && !account ? (
+      ) : !authReady ? (
+        <main className="account-main">
+          <p>Зачекай, відкриваємо профіль…</p>
+        </main>
+      ) : session && !account ? (
         <main className="account-main">
           <section className="setup-notice">
             <h1>Не вдалося відкрити профіль</h1>
             <p role="alert">
-              {profileError || "Зачекайте, профіль завантажується."}
+              {profileError || "Зачекай, профіль завантажується."}
             </p>
             <button type="button" onClick={() => void handleSignOut()}>
-              Вийти
+              Повернутися
             </button>
           </section>
         </main>
@@ -247,10 +146,7 @@ function App() {
           )}
         </>
       ) : (
-        <AccountGate
-          inviteCode={inviteCode}
-          onLocalAuthenticated={handleLocalAuthenticated}
-        />
+        <AccountGate inviteCode={inviteCode} />
       )}
     </div>
   );

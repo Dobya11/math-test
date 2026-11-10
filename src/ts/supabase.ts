@@ -11,9 +11,7 @@ export const supabase = isSupabaseConfigured
 
 export function getSupabase() {
   if (!supabase) {
-    throw new Error(
-      "Supabase не налаштовано. Додайте VITE_SUPABASE_URL і VITE_SUPABASE_ANON_KEY.",
-    );
+    throw new Error("Не вдалося підключитися. Спробуйте ще раз пізніше.");
   }
   return supabase;
 }

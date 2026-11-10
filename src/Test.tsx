@@ -20,6 +20,7 @@ import { getWeakTypeIds, levelFromStats, saveResult } from "./ts/storage.ts";
 import { secondsUntil } from "./ts/timer.ts";
 
 interface TestProps {
+  userId: string;
   grade: Grade;
   questionCount: number;
   timeLimitSec: number | null;
@@ -50,8 +51,17 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
-  const weakTypeIds = useMemo(() => getWeakTypeIds(grade), [grade]);
+function Test({
+  userId,
+  grade,
+  questionCount,
+  timeLimitSec,
+  onExit,
+}: TestProps) {
+  const weakTypeIds = useMemo(
+    () => getWeakTypeIds(grade, userId),
+    [grade, userId],
+  );
 
   const questions = useMemo(() => {
     return generateTestQuestions(grade, questionCount, weakTypeIds);
@@ -129,7 +139,7 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
       };
 
       try {
-        saveResult(finalResult);
+        saveResult(finalResult, userId);
       } catch (error) {
         console.error("Unable to save the completed test result.", error);
         setSaveError(
@@ -140,7 +150,7 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
       }
       setResult(finalResult);
     },
-    [answers, grade, testStartTime, timeLimitSec],
+    [answers, grade, testStartTime, timeLimitSec, userId],
   );
 
   useEffect(() => {
@@ -281,7 +291,12 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
     return (
       <div className="screen">
         <PageCard type="header">
-          <h1>Ось як ти впорався!</h1>
+          <div className="dashboard-heading">
+            <h1>Ось як ти впорався!</h1>
+            <button type="button" className="secondary-button" onClick={onExit}>
+              До тестів
+            </button>
+          </div>
         </PageCard>
 
         <PageCard type="test">
@@ -363,6 +378,9 @@ function Test({ grade, questionCount, timeLimitSec, onExit }: TestProps) {
     <div className="screen">
       <PageCard type="header">
         <div className="test-header">
+          <button type="button" className="secondary-button" onClick={onExit}>
+            До тестів
+          </button>
           {timeLimitSec !== null && (
             <span
               className={`test-timer${timeLeft !== null && timeLeft <= 60 ? " warning" : ""}`}
