@@ -9,21 +9,6 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
-create table public.legacy_data_archives (
-  id uuid primary key default gen_random_uuid(),
-  importer_id uuid not null references public.profiles (id) on delete cascade,
-  source_fingerprint text not null check (source_fingerprint ~ '^[0-9a-f]{64}$'),
-  source_origin text not null check (char_length(source_origin) <= 500),
-  account_count integer not null check (account_count >= 0),
-  result_count integer not null check (result_count >= 0),
-  payload jsonb not null check (
-    jsonb_typeof(payload) = 'object'
-    and payload ->> 'format' = 'math-test-local-v1'
-  ),
-  imported_at timestamptz not null default now(),
-  unique (importer_id, source_fingerprint)
-);
-
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -450,7 +435,6 @@ end;
 $$;
 
 alter table public.profiles enable row level security;
-alter table public.legacy_data_archives enable row level security;
 alter table public.classrooms enable row level security;
 alter table public.class_members enable row level security;
 alter table public.assignments enable row level security;
@@ -462,20 +446,6 @@ alter table public.attempt_answers enable row level security;
 create policy "Profiles are visible to their owner and class teacher"
 on public.profiles for select to authenticated
 using (id = auth.uid() or public.can_teacher_view_student(id));
-
-create policy "Teachers manage their own legacy archives"
-on public.legacy_data_archives for select to authenticated
-using (importer_id = auth.uid());
-
-create policy "Teachers import their own legacy archives"
-on public.legacy_data_archives for insert to authenticated
-with check (
-  importer_id = auth.uid()
-  and exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role = 'teacher'
-  )
-);
 
 create policy "Classrooms are visible to their teacher and students"
 on public.classrooms for select to authenticated
@@ -547,10 +517,10 @@ using (
 
 grant select on public.profiles, public.classrooms, public.class_members,
   public.assignments, public.generated_questions, public.question_answers,
-  public.attempts, public.attempt_answers, public.legacy_data_archives
+  public.attempts, public.attempt_answers
   to authenticated;
 grant insert on public.assignments, public.generated_questions,
-  public.question_answers, public.legacy_data_archives to authenticated;
+  public.question_answers to authenticated;
 revoke all on function public.handle_new_user() from public, anon, authenticated;
 revoke all on function public.has_unique_topics(text[]) from public, anon, authenticated;
 revoke all on function public.is_class_teacher(uuid) from public, anon;

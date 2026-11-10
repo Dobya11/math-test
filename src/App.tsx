@@ -4,11 +4,28 @@ import type { Session } from "@supabase/supabase-js";
 import "./App.css";
 import AccountGate from "./AccountGate.tsx";
 import { StudentDashboard, TeacherDashboard } from "./Classroom.tsx";
+import Tests from "./Tests.tsx";
+import Test from "./Test.tsx";
+import Profile, { TeacherOverview } from "./Profie.tsx";
+import { getCurrentAccount, signOut } from "./ts/accounts.ts";
 import { getAccountProfile } from "./ts/classroom.ts";
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
-import type { User } from "./ts/types.ts";
+import type { Grade, User } from "./ts/types.ts";
+
+type LocalScreen = "tests" | "overview" | "profile" | "test";
 
 function App() {
+  const [localAccount, setLocalAccount] = useState<User | null>(() =>
+    isSupabaseConfigured ? null : getCurrentAccount(),
+  );
+  const [localScreen, setLocalScreen] = useState<LocalScreen>(
+    localAccount?.role === "teacher" ? "overview" : "tests",
+  );
+  const [testSettings, setTestSettings] = useState<{
+    grade: Grade;
+    questionCount: number;
+    timeLimitSec: number | null;
+  } | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<{
     userId: string;
@@ -101,26 +118,103 @@ function App() {
     setProfileError("");
   }
 
+  function handleLocalAuthenticated(account: User) {
+    setLocalAccount(account);
+    setLocalScreen(account.role === "teacher" ? "overview" : "tests");
+    setTestSettings(null);
+  }
+
+  function handleLocalSignOut() {
+    signOut();
+    setLocalAccount(null);
+    setTestSettings(null);
+  }
+
+  function startLocalTest(
+    grade: Grade,
+    questionCount: number,
+    timeLimitSec: number | null,
+  ) {
+    setTestSettings({ grade, questionCount, timeLimitSec });
+    setLocalScreen("test");
+  }
+
+  if (localAccount) {
+    const screens: LocalScreen[] =
+      localAccount.role === "teacher"
+        ? ["overview", "profile"]
+        : ["tests", "profile"];
+    const navigationIndex = screens.indexOf(localScreen);
+
+    return (
+      <div className="App local-layout">
+        <Analytics />
+        <main>
+          {localScreen === "tests" && (
+            <Tests
+              initialGrade={testSettings?.grade ?? 1}
+              onStartTest={startLocalTest}
+            />
+          )}
+          {localScreen === "overview" && (
+            <TeacherOverview user={localAccount} />
+          )}
+          {localScreen === "test" && testSettings && (
+            <Test
+              grade={testSettings.grade}
+              questionCount={testSettings.questionCount}
+              timeLimitSec={testSettings.timeLimitSec}
+              onExit={() => setLocalScreen("tests")}
+            />
+          )}
+          {localScreen === "profile" && (
+            <Profile user={localAccount} onSignOut={handleLocalSignOut} />
+          )}
+        </main>
+        <header className={localScreen === "test" ? "test-nav" : undefined}>
+          {localScreen === "test" ? (
+            <button type="button" onClick={() => setLocalScreen("tests")}>
+              Назад до тестів
+            </button>
+          ) : (
+            <nav aria-label="Основна навігація">
+              <div
+                className="selector"
+                style={
+                  {
+                    "--index": navigationIndex,
+                  } as React.CSSProperties
+                }
+              />
+              {screens.map((screen) => (
+                <button
+                  key={screen}
+                  type="button"
+                  aria-current={localScreen === screen ? "page" : undefined}
+                  onClick={() => setLocalScreen(screen)}
+                >
+                  {screen === "overview"
+                    ? "Успішність"
+                    : screen === "profile"
+                      ? "Профіль"
+                      : "Тести"}
+                </button>
+              ))}
+            </nav>
+          )}
+        </header>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <Analytics />
-      {!isSupabaseConfigured ? (
-        <main className="account-main">
-          <section className="setup-notice">
-            <h1>Потрібно налаштувати Supabase</h1>
-            <p>
-              Створіть файл <code>.env.local</code> за прикладом{" "}
-              <code>.env.example</code>, заповніть URL і публічний anon key
-              проєкту Supabase, а потім виконайте SQL-схему з{" "}
-              <code>supabase/schema.sql</code>.
-            </p>
-          </section>
-        </main>
-      ) : !authReady ? (
+      {isSupabaseConfigured && !authReady ? (
         <main className="account-main">
           <p>Перевірка облікового запису…</p>
         </main>
-      ) : session && !account ? (
+      ) : isSupabaseConfigured && session && !account ? (
         <main className="account-main">
           <section className="setup-notice">
             <h1>Не вдалося відкрити профіль</h1>
@@ -153,7 +247,10 @@ function App() {
           )}
         </>
       ) : (
-        <AccountGate inviteCode={inviteCode} />
+        <AccountGate
+          inviteCode={inviteCode}
+          onLocalAuthenticated={handleLocalAuthenticated}
+        />
       )}
     </div>
   );

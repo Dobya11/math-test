@@ -3,17 +3,13 @@ import PageCard from "./components/Card.tsx";
 import {
   createAssignment,
   createClassroom,
-  getLegacyArchives,
   getStudentSnapshot,
   getTeacherSnapshot,
   joinClassroom,
-  saveLegacyArchive,
   subscribeToClassChanges,
-  type LegacyArchiveSummary,
   type StudentSnapshot,
   type TeacherSnapshot,
 } from "./ts/classroom.ts";
-import { readLegacyArchive } from "./ts/legacyMigration.ts";
 import type { User } from "./ts/types.ts";
 
 const TOPICS = Array.from({ length: 10 }, (_, index) => `Тема ${index + 1}`);
@@ -43,17 +39,11 @@ function TeacherDashboard({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [archiveFile, setArchiveFile] = useState<File | null>(null);
-  const [archivePreview, setArchivePreview] = useState<Awaited<
-    ReturnType<typeof readLegacyArchive>
-  > | null>(null);
-  const [archives, setArchives] = useState<LegacyArchiveSummary[]>([]);
 
   const refresh = useCallback(async () => {
     try {
       const nextSnapshot = await getTeacherSnapshot(user.id);
       setSnapshot(nextSnapshot);
-      setArchives(await getLegacyArchives());
       setError("");
     } catch (caughtError) {
       setError(
@@ -65,46 +55,6 @@ function TeacherDashboard({
       setLoading(false);
     }
   }, [user.id]);
-
-  async function handleSelectArchive(file: File | null) {
-    setArchiveFile(file);
-    setArchivePreview(null);
-    setError("");
-    if (!file) return;
-
-    try {
-      setArchivePreview(await readLegacyArchive(file));
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не вдалося перевірити файл архіву.",
-      );
-    }
-  }
-
-  async function handleImportArchive() {
-    if (!archivePreview) return;
-    setSaving(true);
-    setError("");
-    try {
-      const imported = await saveLegacyArchive(archivePreview);
-      if (!imported) {
-        setError("Цей архів уже перенесено в базу даних.");
-      }
-      setArchiveFile(null);
-      setArchivePreview(null);
-      await refresh();
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не вдалося зберегти архів у базі даних.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
 
   useEffect(() => {
     // Load the snapshot after mount; refresh updates state after its async request.
@@ -388,79 +338,6 @@ function TeacherDashboard({
             </p>
           </PageCard>
 
-          <PageCard type="analysis">
-            <h2>Перенесення даних зі старої версії</h2>
-            <p>
-              Імпортуйте JSON-архів, експортований на старому сайті. Дані
-              збережуться в базі як архів для дослідження, окремо від нових
-              облікових записів та результатів.
-            </p>
-            <label className="info-field">
-              <span>Файл архіву (JSON, до 10 МБ)</span>
-              <input
-                className="account-input"
-                type="file"
-                accept="application/json,.json"
-                onChange={(event) =>
-                  void handleSelectArchive(event.target.files?.[0] ?? null)
-                }
-              />
-            </label>
-            {archivePreview && (
-              <div className="migration-preview">
-                <p>
-                  Файл: <strong>{archiveFile?.name}</strong>
-                </p>
-                <p>
-                  Джерело: <strong>{archivePreview.payload.sourceOrigin}</strong>
-                </p>
-                <p>
-                  Профілів: <strong>{archivePreview.payload.accounts.length}</strong>
-                  {" · "}
-                  Результатів: <strong>{archivePreview.resultCount}</strong>
-                </p>
-                <p className="account-note">
-                  Перевірте, що це потрібний файл і в ньому немає зайвих
-                  персональних даних.
-                </p>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void handleImportArchive()}
-                >
-                  {saving ? "Збереження…" : "Зберегти архів у базі"}
-                </button>
-              </div>
-            )}
-            {archives.length > 0 && (
-              <>
-                <h3>Перенесені архіви</h3>
-                <div className="history-list">
-                  {archives.map((archive) => (
-                    <div className="history-item" key={archive.id}>
-                      <div>
-                        <strong>{archive.source_origin}</strong>
-                        <p>
-                          {new Date(archive.imported_at).toLocaleString(
-                            "uk-UA",
-                          )}
-                        </p>
-                      </div>
-                      <span>
-                        {archive.account_count} проф. · {archive.result_count}{" "}
-                        рез.
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            <p className="account-note">
-              Дані старої версії не можна безпечно прив’язати до нових
-              анонімних профілів автоматично. Архів зберігається окремо, не
-              впливає на живу аналітику і доступний тільки вчителю-імпортеру.
-            </p>
-          </PageCard>
         </>
       )}
 

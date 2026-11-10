@@ -1,6 +1,5 @@
 import type { User } from "./types.ts";
 import { getSupabase } from "./supabase.ts";
-import type { LegacyArchivePayload } from "./legacyMigration.ts";
 
 export interface Classroom {
   id: string;
@@ -45,14 +44,6 @@ export interface StudentSnapshot {
   classroom: Classroom | null;
   assignments: Assignment[];
   attempts: Attempt[];
-}
-
-export interface LegacyArchiveSummary {
-  id: string;
-  source_origin: string;
-  account_count: number;
-  result_count: number;
-  imported_at: string;
 }
 
 async function getAssignments(classroomId: string): Promise<Assignment[]> {
@@ -214,33 +205,6 @@ export async function createAssignment(input: {
     grade: 2,
   });
   if (error) throw error;
-}
-
-export async function saveLegacyArchive(input: {
-  payload: LegacyArchivePayload;
-  fingerprint: string;
-  resultCount: number;
-}): Promise<boolean> {
-  const { error } = await getSupabase().from("legacy_data_archives").insert({
-    source_fingerprint: input.fingerprint,
-    source_origin: input.payload.sourceOrigin,
-    account_count: input.payload.accounts.length,
-    result_count: input.resultCount,
-    payload: input.payload,
-  });
-
-  if (error?.code === "23505") return false;
-  if (error) throw error;
-  return true;
-}
-
-export async function getLegacyArchives(): Promise<LegacyArchiveSummary[]> {
-  const { data, error } = await getSupabase()
-    .from("legacy_data_archives")
-    .select("id,source_origin,account_count,result_count,imported_at")
-    .order("imported_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
 }
 
 export function subscribeToClassChanges(

@@ -584,7 +584,11 @@ select.info-item option:hover {
 }
 
 .classroom-screen {
-  padding: 1rem 1rem 2rem;
+  padding: 1rem 0.5rem 2rem;
+}
+
+.classroom-screen > .p-card {
+  margin: 0;
 }
 
 .dashboard-heading {
@@ -715,7 +719,7 @@ button:disabled {
 
 .setup-notice {
   align-self: center;
-  margin: 1rem;
+  margin: 0;
 }
 
 .setup-notice code {
@@ -1002,20 +1006,20 @@ button:disabled {
   }
 }
 @media screen and (min-width: 800px) {
-  .App {
+  .App.local-layout {
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
     grid-template-rows: minmax(100vh, auto);
   }
 
-  main {
+  .App.local-layout > main {
     grid-column: 2;
     grid-row: 1;
     min-height: 100vh;
     padding: 1.5rem 2rem;
   }
 
-  header {
+  .App.local-layout > header {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
@@ -1026,7 +1030,7 @@ button:disabled {
     border-radius: 0 1.5rem 1.5rem 0;
   }
 
-  header nav {
+  .App.local-layout > header nav {
     height: 100%;
     grid-template-columns: 1fr;
     grid-template-rows: repeat(2, 88px);
@@ -1034,18 +1038,17 @@ button:disabled {
     padding: 1rem;
   }
 
-  header nav > button {
+  .App.local-layout > header nav > button {
     min-height: 0;
     height: 88px;
     font-size: 1.1rem;
   }
 
-  .selector {
+  .App.local-layout .selector {
     top: 1rem;
     left: 1rem;
     width: calc(100% - 2rem);
     height: 88px;
-
     transform: translateY(calc(var(--index) * 100%));
     border-radius: 1rem;
   }
@@ -1054,6 +1057,7 @@ button:disabled {
     max-width: 1000px;
     margin: 0 auto;
     gap: 1.25rem;
+    padding: 1rem 1.5rem 2rem;
   }
 
   .c-header {
