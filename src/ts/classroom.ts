@@ -217,12 +217,12 @@ export async function createAssignment(input: {
 }
 
 export async function getAssignmentQuestions(
-  assignmentId: string,
+  attemptId: string,
 ): Promise<AssignmentQuestion[]> {
   const { data, error } = await getSupabase()
     .from("generated_questions")
     .select("id,position,topic,prompt")
-    .eq("assignment_id", assignmentId)
+    .eq("attempt_id", attemptId)
     .order("position");
   if (error) throw error;
   return data ?? [];

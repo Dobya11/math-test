@@ -16,11 +16,20 @@ import {
   type StudentSnapshot,
   type TeacherSnapshot,
 } from "./ts/classroom.ts";
-import Test from "./Test.tsx";
-import Tests from "./Tests.tsx";
-import type { Grade, User } from "./ts/types.ts";
+import type { User } from "./ts/types.ts";
 
-const TOPICS = Array.from({ length: 10 }, (_, index) => `Тема ${index + 1}`);
+const TOPICS = [
+  "Повторення матеріалу 1 класу",
+  "Додавання і віднімання в межах 20",
+  "Додавання двоцифрових чисел",
+  "Віднімання двоцифрових чисел",
+  "Числа, нумерація та порівняння",
+  "Вирази й порядок дій",
+  "Текстові задачі",
+  "Величини та вимірювання",
+  "Геометрія й периметр",
+  "Множення та ділення",
+];
 const QUESTIONS_PER_TOPIC = [4, 8, 12] as const;
 
 function ErrorMessage({ message }: { message: string }) {
@@ -461,13 +470,13 @@ function AssignmentTest({
     setBusy(true);
     setError("");
     try {
-      const nextQuestions = await getAssignmentQuestions(assignment.id);
+      const nextAttemptId = await startAssignmentAttempt(assignment.id);
+      const nextQuestions = await getAssignmentQuestions(nextAttemptId);
       if (nextQuestions.length === 0) {
         throw new Error(
-          "Для цього завдання ще немає вправ. Попроси вчителя створити нове.",
+          "Для цього завдання ще немає питань. Попроси вчителя створити нове.",
         );
       }
-      const nextAttemptId = await startAssignmentAttempt(assignment.id);
       setQuestions(nextQuestions);
       setAttemptId(nextAttemptId);
       setCurrentIndex(0);
@@ -689,21 +698,14 @@ function StudentDashboard({
   inviteCode: string;
   onSignOut: () => void;
 }) {
-  type StudentView = "class" | "practice" | "test";
   const [snapshot, setSnapshot] = useState<StudentSnapshot | null>(null);
   const [code, setCode] = useState(inviteCode);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
-  const [studentView, setStudentView] = useState<StudentView>("class");
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(
     null,
   );
-  const [practiceSettings, setPracticeSettings] = useState<{
-    grade: Grade;
-    questionCount: number;
-    timeLimitSec: number | null;
-  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -747,15 +749,6 @@ function StudentDashboard({
     }
   }
 
-  function startPractice(
-    grade: Grade,
-    questionCount: number,
-    timeLimitSec: number | null,
-  ) {
-    setPracticeSettings({ grade, questionCount, timeLimitSec });
-    setStudentView("test");
-  }
-
   function exitAssignment() {
     setActiveAssignment(null);
     void refresh();
@@ -764,29 +757,6 @@ function StudentDashboard({
   if (activeAssignment) {
     return (
       <AssignmentTest assignment={activeAssignment} onExit={exitAssignment} />
-    );
-  }
-
-  if (studentView === "practice") {
-    return (
-      <Tests
-        userId={user.id}
-        initialGrade={2}
-        onBackToClass={() => setStudentView("class")}
-        onStartTest={startPractice}
-      />
-    );
-  }
-
-  if (studentView === "test" && practiceSettings) {
-    return (
-      <Test
-        userId={user.id}
-        grade={practiceSettings.grade}
-        questionCount={practiceSettings.questionCount}
-        timeLimitSec={practiceSettings.timeLimitSec}
-        onExit={() => setStudentView("practice")}
-      />
     );
   }
 
@@ -802,13 +772,6 @@ function StudentDashboard({
             <p>Учень · 2 клас</p>
           </div>
           <div className="dashboard-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setStudentView("practice")}
-            >
-              Тренуватися
-            </button>
             <button
               type="button"
               className="secondary-button"

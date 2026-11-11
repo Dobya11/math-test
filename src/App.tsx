@@ -13,6 +13,11 @@ import {
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
 import type { User } from "./ts/types.ts";
 
+async function signOutLocally() {
+  const { error } = await getSupabase().auth.signOut({ scope: "local" });
+  if (error) throw error;
+}
+
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
@@ -89,7 +94,7 @@ function App() {
     });
     if (error) {
       throw new Error(
-        "Не вдалося відновити цю сесію. Можливо, профіль більше недоступний.",
+        `Не вдалося відновити сесію: ${error.message}`,
         { cause: error },
       );
     }
@@ -106,8 +111,7 @@ function App() {
   ) {
     if (session) {
       setSavedAccounts(saveAccountSession(session));
-      const { error: signOutError } = await getSupabase().auth.signOut();
-      if (signOutError) throw signOutError;
+      await signOutLocally();
     }
     const { data, error } = await getSupabase().auth.signInAnonymously({
       options: {
@@ -168,9 +172,12 @@ function App() {
         return;
       }
     }
-    const { error } = await getSupabase().auth.signOut();
-    if (error) {
-      setProfileError(error.message);
+    try {
+      await signOutLocally();
+    } catch (error) {
+      setProfileError(
+        error instanceof Error ? error.message : "Не вдалося вийти з профілю.",
+      );
       return;
     }
     setProfileError("");

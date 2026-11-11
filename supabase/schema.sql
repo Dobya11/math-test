@@ -76,8 +76,16 @@ create table public.assignments (
   topics text[] not null check (
     cardinality(topics) between 1 and 10
     and topics <@ array[
-      'Тема 1', 'Тема 2', 'Тема 3', 'Тема 4', 'Тема 5',
-      'Тема 6', 'Тема 7', 'Тема 8', 'Тема 9', 'Тема 10'
+      'Повторення матеріалу 1 класу',
+      'Додавання і віднімання в межах 20',
+      'Додавання двоцифрових чисел',
+      'Віднімання двоцифрових чисел',
+      'Числа, нумерація та порівняння',
+      'Вирази й порядок дій',
+      'Текстові задачі',
+      'Величини та вимірювання',
+      'Геометрія й периметр',
+      'Множення та ділення'
     ]::text[]
     and public.has_unique_topics(topics)
   ),
@@ -94,8 +102,7 @@ create table public.generated_questions (
   position integer not null check (position > 0),
   topic text not null,
   prompt text not null check (char_length(trim(prompt)) > 0),
-  answer_type text not null check (answer_type in ('number', 'comparator', 'text')),
-  unique (assignment_id, position)
+  answer_type text not null check (answer_type in ('number', 'comparator', 'text'))
 );
 
 create table public.question_answers (
@@ -118,6 +125,15 @@ create table public.attempts (
   ),
   check (score is null or (score >= 0 and score <= total_questions))
 );
+
+alter table public.generated_questions
+  add column attempt_id uuid references public.attempts (id) on delete cascade;
+create unique index generated_questions_assignment_position_idx
+  on public.generated_questions (assignment_id, position)
+  where attempt_id is null;
+create unique index generated_questions_attempt_position_idx
+  on public.generated_questions (attempt_id, position)
+  where attempt_id is not null;
 
 create table public.attempt_answers (
   id uuid primary key default gen_random_uuid(),
@@ -398,6 +414,14 @@ declare
   new_attempt uuid;
   target_class uuid;
   question_count integer;
+  current_topic text;
+  current_question uuid;
+  question_position integer := 0;
+  left_operand integer;
+  right_operand integer;
+  correct_sum integer;
+  shown_sum integer;
+  expected_answer text;
 begin
   select a.classroom_id into target_class
   from public.assignments a
@@ -408,14 +432,59 @@ begin
 
   select count(*) into question_count
   from public.generated_questions q
-  where q.assignment_id = p_assignment_id;
+  where q.assignment_id = p_assignment_id
+    and q.attempt_id is null;
   if question_count = 0 then
-    raise exception 'Для цього завдання ще немає навчальних вправ.';
+    raise exception 'Для цього завдання ще немає питань.';
   end if;
 
   insert into public.attempts (assignment_id, student_id, total_questions)
   values (p_assignment_id, auth.uid(), question_count)
   returning id into new_attempt;
+
+  for current_topic in
+    select q.topic
+    from public.generated_questions q
+    where q.assignment_id = p_assignment_id
+      and q.attempt_id is null
+    order by random()
+  loop
+    left_operand := floor(random() * 50)::integer + 1;
+    right_operand := floor(random() * 50)::integer + 1;
+    correct_sum := left_operand + right_operand;
+
+    if random() < 0.5 then
+      shown_sum := correct_sum;
+      expected_answer := 'Правильно';
+    else
+      shown_sum := correct_sum + case when random() < 0.5 then -1 else 1 end;
+      expected_answer := 'Неправильно';
+    end if;
+
+    question_position := question_position + 1;
+    insert into public.generated_questions (
+      assignment_id,
+      attempt_id,
+      position,
+      topic,
+      prompt,
+      answer_type
+    )
+    values (
+      p_assignment_id,
+      new_attempt,
+      question_position,
+      current_topic,
+      left_operand::text || ' + ' || right_operand::text || ' = ' ||
+        shown_sum::text || '. Це правильно чи неправильно?',
+      'text'
+    )
+    returning id into current_question;
+
+    insert into public.question_answers (question_id, correct_answer)
+    values (current_question, expected_answer);
+  end loop;
+
   return new_attempt;
 end;
 $$;
@@ -432,6 +501,7 @@ set search_path = public
 as $$
 declare
   question_assignment uuid;
+  question_attempt uuid;
   expected_answer text;
   result boolean;
 begin
@@ -445,14 +515,15 @@ begin
     raise exception 'Спробу вже завершено.';
   end if;
 
-  select q.assignment_id, a.correct_answer into question_assignment, expected_answer
+  select q.assignment_id, q.attempt_id, a.correct_answer
+    into question_assignment, question_attempt, expected_answer
   from public.generated_questions q
   join public.question_answers a on a.question_id = q.id
   where q.id = p_question_id;
   if not found then
     raise exception 'Завдання або правильну відповідь не знайдено.';
   end if;
-  if not exists (
+  if question_attempt is distinct from p_attempt_id or not exists (
     select 1 from public.attempts t
     where t.id = p_attempt_id and t.assignment_id = question_assignment
   ) then
@@ -496,8 +567,7 @@ begin
 
   select count(*) into question_total
   from public.generated_questions q
-  join public.attempts t on t.assignment_id = q.assignment_id
-  where t.id = p_attempt_id;
+  where q.attempt_id = p_attempt_id;
   select count(*), count(*) filter (where aa.is_correct)
     into answer_total, correct_total
   from public.attempt_answers aa
@@ -553,10 +623,18 @@ create policy "Questions are visible to class participants"
 on public.generated_questions for select to authenticated
 using (
   public.is_assignment_teacher(assignment_id)
+  or (
+    attempt_id is null
+    and exists (
+      select 1
+      from public.assignments a
+      where a.id = assignment_id and public.is_class_member(a.classroom_id)
+    )
+  )
   or exists (
     select 1
-    from public.assignments a
-    where a.id = assignment_id and public.is_class_member(a.classroom_id)
+    from public.attempts t
+    where t.id = attempt_id and t.student_id = auth.uid()
   )
 );
 
