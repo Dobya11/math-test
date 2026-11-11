@@ -13,11 +13,19 @@ const grades: Grade[] = [1, 2, 3, 4];
 describe("generateQuestion", () => {
   it("keeps topics appropriate for each grade", () => {
     expect(GRADE_TASK_TYPES[1].map(({ id }) => id)).toContain("word_problem");
-    expect(GRADE_TASK_TYPES[2].map(({ id }) => id)).toContain("word_problem");
-    expect(GRADE_TASK_TYPES[2].map(({ id }) => id)).not.toContain(
-      "multiplication",
+    expect(GRADE_TASK_TYPES[2].map(({ id }) => id).sort()).toEqual(
+      [
+        "addition",
+        "comparison",
+        "division",
+        "expressions",
+        "measurements",
+        "multiplication",
+        "numeration",
+        "subtraction",
+        "word_problem",
+      ].sort(),
     );
-    expect(GRADE_TASK_TYPES[2].map(({ id }) => id)).not.toContain("division");
     expect(GRADE_TASK_TYPES[3].map(({ id }) => id)).toEqual([
       "addition",
       "subtraction",
@@ -67,7 +75,7 @@ describe("generateQuestion", () => {
     }
   });
 
-  it("generates simple addition and subtraction word problems for grades 1 and 2", () => {
+  it("generates grade 1 and grade 2 word problems with matching answers", () => {
     for (const grade of [1, 2] as const) {
       const max = grade === 1 ? 20 : 100;
 
@@ -76,9 +84,14 @@ describe("generateQuestion", () => {
         const numbers = question.prompt.match(/\d+/g)?.map(Number) ?? [];
         const [first, second] = numbers;
         const expected =
-          question.prompt.includes("разом") || question.prompt.includes("ще")
-            ? first + second
-            : first - second;
+          question.prompt.includes("разом") ||
+          question.prompt.includes("стало")
+          ? first + second
+          : question.prompt.includes("залишилося")
+            ? first - second
+            : question.prompt.includes("коробках")
+              ? first * second
+              : first / second;
 
         expect(numbers).toHaveLength(2);
         expect(numbers.every((number) => number <= max)).toBe(true);
@@ -228,6 +241,65 @@ describe("generateQuestion", () => {
         );
       }
 
+      const grade2Multiplication = generateQuestion(
+        2,
+        "multiplication",
+        "medium",
+      );
+      const grade2MultiplicationMatch = grade2Multiplication.prompt.match(
+        /^(\d+) × (\d+) = \?$/,
+      );
+      expect(grade2MultiplicationMatch).not.toBeNull();
+      if (grade2MultiplicationMatch) {
+        expect(grade2Multiplication.answer).toBe(
+          String(
+            Number(grade2MultiplicationMatch[1]) *
+              Number(grade2MultiplicationMatch[2]),
+          ),
+        );
+      }
+
+      const grade2Division = generateQuestion(2, "division", "medium");
+      const grade2DivisionMatch = grade2Division.prompt.match(
+        /^(\d+) : (\d+) = \?$/,
+      );
+      expect(grade2DivisionMatch).not.toBeNull();
+      if (grade2DivisionMatch) {
+        expect(grade2Division.answer).toBe(
+          String(
+            Number(grade2DivisionMatch[1]) /
+              Number(grade2DivisionMatch[2]),
+          ),
+        );
+      }
+
+      const grade2Expression = generateQuestion(2, "expressions", "medium");
+      const grade2ExpressionMatch = grade2Expression.prompt.match(
+        /^(\d+) \+ \((\d+) - (\d+)\) = \?$/,
+      );
+      if (grade2ExpressionMatch) {
+        expect(grade2Expression.answer).toBe(
+          String(
+            Number(grade2ExpressionMatch[1]) +
+              Number(grade2ExpressionMatch[2]) -
+              Number(grade2ExpressionMatch[3]),
+          ),
+        );
+      } else {
+        const multiplicationExpressionMatch =
+          grade2Expression.prompt.match(/^(\d+) × (\d+) \+ (\d+) = \?$/);
+        expect(multiplicationExpressionMatch).not.toBeNull();
+        if (multiplicationExpressionMatch) {
+          expect(grade2Expression.answer).toBe(
+            String(
+              Number(multiplicationExpressionMatch[1]) *
+                Number(multiplicationExpressionMatch[2]) +
+                Number(multiplicationExpressionMatch[3]),
+            ),
+          );
+        }
+      }
+
       const expression = generateQuestion(4, "expressions", "medium");
       const expressionMatch = expression.prompt.match(
         /^(\d+) × (\d+) \+ (\d+) - (\d+) = \?$/,
@@ -245,6 +317,82 @@ describe("generateQuestion", () => {
         expect(equation.answer).toBe(
           String(Number(equationMatch[2]) / Number(equationMatch[1])),
         );
+      }
+    }
+  });
+
+  it("generates number comparisons and curriculum-aligned measurement questions for grade 2", () => {
+    for (let sample = 0; sample < 100; sample += 1) {
+      const comparison = generateQuestion(2, "comparison", "medium");
+      const match = comparison.prompt.match(
+        /^Порівняй числа: (\d+) \? (\d+)$/,
+      );
+      if (match) {
+        const expected = Number(match[1]) < Number(match[2]) ? "<" : ">";
+        expect(comparison.answer).toBe(expected);
+      } else {
+        const expressionMatch = comparison.prompt.match(
+          /^Порівняй вираз і число: (\d+) × (\d+) \+ (\d+) \? (\d+)$/,
+        );
+        expect(expressionMatch).not.toBeNull();
+        if (expressionMatch) {
+          const value =
+            Number(expressionMatch[1]) * Number(expressionMatch[2]) +
+            Number(expressionMatch[3]);
+          const expected = value < Number(expressionMatch[4]) ? "<" : ">";
+          expect(comparison.answer).toBe(expected);
+        }
+      }
+
+      const measurement = generateQuestion(2, "measurements", "medium");
+      const measurementMatch = measurement.prompt.match(
+        /^Скільки (\S+) становлять (\d+) (\S+)\?$/,
+      );
+      expect(measurementMatch).not.toBeNull();
+      if (measurementMatch) {
+        const [, targetUnit, amount, sourceUnit] = measurementMatch;
+        const factors: Record<string, number> = {
+          м: 100,
+          см: 10,
+          год: 60,
+          діб: 24,
+          кг: 1000,
+          ц: 100,
+        };
+        expect(factors[sourceUnit]).toBeDefined();
+        expect(targetUnit).not.toBe(sourceUnit);
+        expect(measurement.answer).toBe(
+          String(Number(amount) * factors[sourceUnit]),
+        );
+      }
+    }
+  });
+
+  it("calculates grade 2 numeration answers", () => {
+    for (const difficulty of GRADE_DIFFICULTIES[2]) {
+      for (let sample = 0; sample < 100; sample += 1) {
+        const numeration = generateQuestion(2, "numeration", difficulty);
+        const tensMatch = numeration.prompt.match(
+          /розряді десятків числа (\d+)\?$/,
+        );
+        const nextMatch = numeration.prompt.match(/після числа (\d+)\?$/);
+        const previousMatch = numeration.prompt.match(/перед числом (\d+)\?$/);
+
+        if (tensMatch) {
+          expect(numeration.answer).toBe(
+            String(Math.floor(Number(tensMatch[1]) / 10)),
+          );
+        } else if (nextMatch) {
+          expect(numeration.answer).toBe(String(Number(nextMatch[1]) + 1));
+        } else {
+          expect(previousMatch).not.toBeNull();
+          if (previousMatch) {
+            expect(numeration.answer).toBe(
+              String(Number(previousMatch[1]) - 1),
+            );
+          }
+        }
+
       }
     }
   });

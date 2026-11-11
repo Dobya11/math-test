@@ -49,9 +49,15 @@ export const GRADE_TASK_TYPES: Record<Grade, TaskTypeConfig[]> = {
     { id: "word_problem", label: "Текстова задача" },
   ],
   2: [
+    { id: "numeration", label: "Числа та нумерація" },
+    { id: "comparison", label: "Порівняння чисел і виразів" },
     { id: "addition", label: "Додавання" },
     { id: "subtraction", label: "Віднімання" },
+    { id: "expressions", label: "Вирази та порядок дій" },
+    { id: "multiplication", label: "Множення" },
+    { id: "division", label: "Ділення" },
     { id: "word_problem", label: "Текстова задача" },
+    { id: "measurements", label: "Величини та вимірювання" },
   ],
   3: [
     { id: "addition", label: "Додавання" },
@@ -140,9 +146,10 @@ function g1_compare(difficulty: Difficulty): Question {
 }
 
 function g2_addition(difficulty: Difficulty): Question {
-  const max = difficulty === "easy" ? 20 : 100;
-  const a = randInt(10, max - 1);
-  const b = randInt(1, max - a);
+  const a =
+    difficulty === "easy" ? randInt(1, 19) : randInt(10, 79);
+  const b =
+    difficulty === "easy" ? randInt(1, 20 - a) : randInt(10, 99 - a);
   return build(
     2,
     "addition",
@@ -154,8 +161,7 @@ function g2_addition(difficulty: Difficulty): Question {
 }
 
 function g2_subtraction(difficulty: Difficulty): Question {
-  const max = difficulty === "easy" ? 20 : 100;
-  const a = randInt(10, max);
+  const a = difficulty === "easy" ? randInt(11, 20) : randInt(21, 99);
   const b = randInt(1, a - 1);
   return build(
     2,
@@ -243,20 +249,192 @@ function g1_word_problem(difficulty: Difficulty): Question {
 }
 
 function g2_word_problem(difficulty: Difficulty): Question {
-  const max = difficulty === "easy" ? 20 : 100;
-  const isAddition = Math.random() < 0.5;
-  const a = randInt(10, isAddition ? max - 1 : max);
-  const b = randInt(1, isAddition ? max - a : a - 1);
-  const prompt = isAddition
-    ? `У бібліотеці було ${a} книжок, а потім принесли ще ${b}. Скільки книжок стало?`
-    : `У бібліотеці було ${a} книжок. ${b} книжок узяли читачі. Скільки книжок залишилося?`;
+  const operationCount = difficulty === "easy" ? 2 : 4;
+  const operation = randInt(0, operationCount - 1);
+  let prompt: string;
+  let answer: number;
+
+  if (operation === 0) {
+    const a = randInt(10, 79);
+    const b = randInt(1, 99 - a);
+    prompt = `У бібліотеці було ${a} книжок, а потім принесли ще ${b}. Скільки книжок стало?`;
+    answer = a + b;
+  } else if (operation === 1) {
+    const a = randInt(11, 99);
+    const b = randInt(1, a - 1);
+    prompt = `У бібліотеці було ${a} книжок. ${b} книжок узяли читачі. Скільки книжок залишилося?`;
+    answer = a - b;
+  } else if (operation === 2) {
+    const boxes = randInt(2, 9);
+    const itemsPerBox = randInt(2, 9);
+    prompt = `У ${boxes} коробках лежить по ${itemsPerBox} олівців. Скільки олівців усього?`;
+    answer = boxes * itemsPerBox;
+  } else {
+    const groups = randInt(2, 9);
+    const itemsPerGroup = randInt(2, 9);
+    prompt = `${groups * itemsPerGroup} яблук розклали порівну у ${groups} кошиків. Скільки яблук у кожному кошику?`;
+    answer = itemsPerGroup;
+  }
+
   return build(
     2,
     "word_problem",
     "Текстова задача",
     difficulty,
     prompt,
-    isAddition ? a + b : a - b,
+    answer,
+  );
+}
+
+function g2_numeration(difficulty: Difficulty): Question {
+  const min = difficulty === "easy" ? 11 : 21;
+  const max = difficulty === "easy" ? 20 : 99;
+  const number = randInt(min, max);
+  const choice = randInt(0, 2);
+
+  if (choice === 0) {
+    return build(
+      2,
+      "numeration",
+      "Числа та нумерація",
+      difficulty,
+      `Яка цифра стоїть у розряді десятків числа ${number}?`,
+      Math.floor(number / 10),
+    );
+  }
+  if (choice === 1) {
+    return build(
+      2,
+      "numeration",
+      "Числа та нумерація",
+      difficulty,
+      `Яке число буде наступним після числа ${number}?`,
+      number + 1,
+    );
+  }
+  return build(
+    2,
+    "numeration",
+    "Числа та нумерація",
+    difficulty,
+    `Яке число було перед числом ${number}?`,
+    number - 1,
+  );
+}
+
+function g2_comparison(difficulty: Difficulty): Question {
+  const min = difficulty === "easy" ? 10 : 21;
+  const max = difficulty === "easy" ? 20 : 99;
+  let prompt: string;
+  let left: number;
+  let right: number;
+
+  if (difficulty === "medium" && Math.random() < 0.5) {
+    const first = randInt(2, 9);
+    const second = randInt(2, 9);
+    const addend = randInt(1, 20);
+    right = randInt(20, 99);
+    left = first * second + addend;
+    while (left === right) {
+      right = randInt(20, 99);
+    }
+    prompt = `Порівняй вираз і число: ${first} × ${second} + ${addend} ? ${right}`;
+  } else {
+    left = randInt(min, max);
+    right = randInt(min, max);
+    while (left === right) {
+      right = randInt(min, max);
+    }
+    prompt = `Порівняй числа: ${left} ? ${right}`;
+  }
+
+  const answer = left < right ? "<" : ">";
+  return build(
+    2,
+    "comparison",
+    "Порівняння чисел і виразів",
+    difficulty,
+    prompt,
+    answer,
+    "comparator",
+  );
+}
+
+function g2_expressions(difficulty: Difficulty): Question {
+  if (difficulty === "medium" && Math.random() < 0.5) {
+    const first = randInt(2, 9);
+    const second = randInt(2, 9);
+    const third = randInt(1, 20);
+    return build(
+      2,
+      "expressions",
+      "Вирази та порядок дій",
+      difficulty,
+      `${first} × ${second} + ${third} = ?`,
+      first * second + third,
+    );
+  }
+
+  const first = difficulty === "easy" ? randInt(5, 20) : randInt(20, 70);
+  const second = randInt(2, difficulty === "easy" ? 10 : 30);
+  const third = randInt(1, second - 1);
+  const answer = first + second - third;
+  return build(
+    2,
+    "expressions",
+    "Вирази та порядок дій",
+    difficulty,
+    `${first} + (${second} - ${third}) = ?`,
+    answer,
+  );
+}
+
+function g2_multiplication(difficulty: Difficulty): Question {
+  const maxFactor = difficulty === "easy" ? 5 : 9;
+  const left = randInt(1, maxFactor);
+  const right = randInt(2, maxFactor);
+  return build(
+    2,
+    "multiplication",
+    "Множення",
+    difficulty,
+    `${left} × ${right} = ?`,
+    left * right,
+  );
+}
+
+function g2_division(difficulty: Difficulty): Question {
+  const maxFactor = difficulty === "easy" ? 5 : 9;
+  const divisor = randInt(1, maxFactor);
+  const quotient = randInt(1, maxFactor);
+  return build(
+    2,
+    "division",
+    "Ділення",
+    difficulty,
+    `${divisor * quotient} : ${divisor} = ?`,
+    quotient,
+  );
+}
+
+function g2_measurements(difficulty: Difficulty): Question {
+  const multiplier = randInt(1, difficulty === "easy" ? 3 : 9);
+  const conversions = [
+    { from: "м", factor: 100, to: "см" },
+    { from: "см", factor: 10, to: "мм" },
+    { from: "год", factor: 60, to: "хв" },
+    { from: "діб", factor: 24, to: "год" },
+    { from: "кг", factor: 1000, to: "г" },
+    { from: "ц", factor: 100, to: "кг" },
+  ];
+  const { from, factor, to } = pick(conversions);
+  return build(
+    2,
+    "measurements",
+    "Величини та вимірювання",
+    difficulty,
+    `Скільки ${to} становлять ${multiplier} ${from}?`,
+    multiplier * factor,
   );
 }
 
@@ -406,9 +584,15 @@ const GENERATORS: Record<Grade, Record<string, GeneratorFn>> = {
     word_problem: g1_word_problem,
   },
   2: {
+    numeration: g2_numeration,
+    comparison: g2_comparison,
     addition: g2_addition,
     subtraction: g2_subtraction,
+    expressions: g2_expressions,
+    multiplication: g2_multiplication,
+    division: g2_division,
     word_problem: g2_word_problem,
+    measurements: g2_measurements,
   },
   3: {
     addition: g3_addition,
