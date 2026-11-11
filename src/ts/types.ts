@@ -53,6 +53,7 @@ export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
 };
 export interface User {
   id: string;
+  username: string;
   name: string;
   role: "teacher" | "student";
 }

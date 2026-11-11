@@ -513,6 +513,15 @@ select.info-item option:hover {
   opacity: 0.8;
 }
 
+.account-profile-info {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.account-profile-info span {
+  font-size: 0.85rem;
+}
+
 .role-picker {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

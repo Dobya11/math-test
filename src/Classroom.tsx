@@ -156,7 +156,7 @@ function TeacherDashboard({
         <div className="dashboard-heading">
           <div>
             <h1>{user.name}</h1>
-            <p>Кабінет учителя · 2 клас</p>
+            <p>@{user.username} · Кабінет учителя · 2 клас</p>
           </div>
           <button
             type="button"
@@ -261,9 +261,10 @@ function TeacherDashboard({
                       <div>
                         <strong>{member.name}</strong>
                         <p>
+                          @{member.username}
                           {attempts.length
-                            ? `${attempts.length} спроб · ${completed.length} завершено`
-                            : "Ще не починав завдань"}
+                            ? ` · ${attempts.length} спроб · ${completed.length} завершено`
+                            : " · Ще не починав завдань"}
                         </p>
                       </div>
                       <span aria-hidden="true">›</span>
@@ -408,6 +409,7 @@ function TeacherDashboard({
               Закрити
             </button>
             <h2 id="student-details-title">{selectedStudent.name}</h2>
+            <p>@{selectedStudent.username}</p>
             <h3>Спроби виконання</h3>
             {selectedAttempts.length === 0 ? (
               <p>Учень ще не розпочинав завдань.</p>
@@ -769,7 +771,7 @@ function StudentDashboard({
         <div className="dashboard-heading">
           <div>
             <h1>{user.name}</h1>
-            <p>Учень · 2 клас</p>
+            <p>@{user.username} · Учень · 2 клас</p>
           </div>
           <div className="dashboard-actions">
             <button

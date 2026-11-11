@@ -4,20 +4,24 @@ const STORAGE_KEY = "mathTest_savedAccounts_v1";
 
 export interface SavedAccount {
   id: string;
+  username: string;
   name: string;
   role: "teacher" | "student" | null;
   accessToken: string;
   refreshToken: string;
 }
 
+type StoredAccount = Omit<SavedAccount, "username"> & { username?: string };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isSavedAccount(value: unknown): value is SavedAccount {
+function isStoredAccount(value: unknown): value is StoredAccount {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
+    (value.username === undefined || typeof value.username === "string") &&
     typeof value.name === "string" &&
     (value.role === "teacher" ||
       value.role === "student" ||
@@ -46,10 +50,17 @@ export function loadSavedAccounts(): SavedAccount[] {
       cause: error,
     });
   }
-  if (!Array.isArray(parsed) || !parsed.every(isSavedAccount)) {
+  if (!Array.isArray(parsed) || !parsed.every(isStoredAccount)) {
     throw new Error("Список збережених профілів має неправильний формат.");
   }
-  return parsed;
+  return parsed.map((account) => ({
+    ...account,
+    username: account.username ?? fallbackUsername(account.id),
+  }));
+}
+
+function fallbackUsername(id: string): string {
+  return `user_${id.replace(/-/g, "").slice(0, 15)}`;
 }
 
 export function saveAccountSession(session: Session): SavedAccount[] {
@@ -61,6 +72,11 @@ export function saveAccountSession(session: Session): SavedAccount[] {
       : null;
   const account: SavedAccount = {
     id: session.user.id,
+    username:
+      typeof metadata.username === "string" &&
+      /^[a-z0-9_]{3,20}$/.test(metadata.username)
+        ? metadata.username
+        : fallbackUsername(session.user.id),
     name:
       typeof metadata.display_name === "string" && metadata.display_name.trim()
         ? metadata.display_name.trim()

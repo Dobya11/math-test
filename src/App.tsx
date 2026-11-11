@@ -93,10 +93,9 @@ function App() {
       refresh_token: savedAccount.refreshToken,
     });
     if (error) {
-      throw new Error(
-        `Не вдалося відновити сесію: ${error.message}`,
-        { cause: error },
-      );
+      throw new Error(`Не вдалося відновити сесію: ${error.message}`, {
+        cause: error,
+      });
     }
     if (!data.session || data.session.user.id !== savedAccount.id) {
       throw new Error("Supabase повернув інший профіль замість вибраного.");
@@ -106,9 +105,19 @@ function App() {
   }
 
   async function handleCreateAccount(
-    name: string,
+    username: string,
+    displayName: string,
     role: "teacher" | "student",
   ) {
+    const { data: usernameAvailable, error: usernameError } =
+      await getSupabase().rpc("is_username_available", {
+        p_username: username,
+      });
+    if (usernameError) throw usernameError;
+    if (usernameAvailable !== true) {
+      throw new Error("Цей username вже зайнятий. Обери інший.");
+    }
+
     if (session) {
       setSavedAccounts(saveAccountSession(session));
       await signOutLocally();
@@ -116,12 +125,20 @@ function App() {
     const { data, error } = await getSupabase().auth.signInAnonymously({
       options: {
         data: {
-          display_name: name,
+          username,
+          display_name: displayName,
           role,
         },
       },
     });
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23505" || /username|зайнятий/i.test(error.message)) {
+        throw new Error("Цей username вже зайнятий. Обери інший.", {
+          cause: error,
+        });
+      }
+      throw error;
+    }
     if (!data.session) {
       throw new Error("Supabase не повернув сесію нового профілю.");
     }

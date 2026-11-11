@@ -36,6 +36,7 @@ export interface Attempt {
 
 export interface ClassMember {
   id: string;
+  username: string;
   name: string;
   joined_at: string;
 }
@@ -66,14 +67,19 @@ async function getAssignments(classroomId: string): Promise<Assignment[]> {
 export async function getAccountProfile(userId: string): Promise<User> {
   const { data, error } = await getSupabase()
     .from("profiles")
-    .select("id,display_name,role")
+    .select("id,username,display_name,role")
     .eq("id", userId)
     .single();
   if (error) throw error;
   if (data.role !== "teacher" && data.role !== "student") {
     throw new Error("У профілі вказано невідому роль.");
   }
-  return { id: data.id, name: data.display_name, role: data.role };
+  return {
+    id: data.id,
+    username: data.username,
+    name: data.display_name,
+    role: data.role,
+  };
 }
 
 export async function getTeacherSnapshot(
@@ -105,22 +111,23 @@ export async function getTeacherSnapshot(
     memberRows.length > 0
       ? await client
           .from("profiles")
-          .select("id,display_name")
+          .select("id,username,display_name")
           .in(
             "id",
             memberRows.map(({ student_id }) => student_id),
           )
       : { data: [], error: null };
   if (profileResult.error) throw profileResult.error;
-  const names = new Map(
-    (profileResult.data ?? []).map(({ id, display_name }) => [
+  const profiles = new Map(
+    (profileResult.data ?? []).map(({ id, username, display_name }) => [
       id,
-      display_name,
+      { username, name: display_name },
     ]),
   );
   const members = memberRows.map((member) => ({
     id: member.student_id,
-    name: names.get(member.student_id) ?? "Учень",
+    username: profiles.get(member.student_id)?.username ?? "",
+    name: profiles.get(member.student_id)?.name ?? "Учень",
     joined_at: member.joined_at,
   }));
 

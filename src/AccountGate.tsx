@@ -8,7 +8,8 @@ interface AccountGateProps {
   activeAccountId: string | null;
   onSelectAccount: (account: SavedAccount) => Promise<void>;
   onCreateAccount: (
-    name: string,
+    username: string,
+    displayName: string,
     role: "teacher" | "student",
   ) => Promise<void>;
 }
@@ -20,6 +21,7 @@ function AccountGate({
   onSelectAccount,
   onCreateAccount,
 }: AccountGateProps) {
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<"teacher" | "student">(
     inviteCode ? "student" : "teacher",
@@ -50,7 +52,11 @@ function AccountGate({
     setBusy(true);
 
     try {
-      await onCreateAccount(name.trim().replace(/\s+/g, " "), role);
+      await onCreateAccount(
+        username.trim().toLowerCase(),
+        name.trim().replace(/\s+/g, " "),
+        role,
+      );
     } catch (caughtError) {
       console.error("Unable to create the account.", caughtError);
       setError(
@@ -90,7 +96,10 @@ function AccountGate({
                     disabled={busy}
                     onClick={() => void handleSelectAccount(account)}
                   >
-                    <strong>{account.name}</strong>
+                    <div className="account-profile-info">
+                      <strong>{account.name}</strong>
+                      <span>@{account.username}</span>
+                    </div>
                     <span>
                       {account.id === activeAccountId
                         ? "Продовжити"
@@ -109,12 +118,32 @@ function AccountGate({
             </>
           )}
 
-          <h2>
-            {savedAccounts.length ? "Створити профіль" : "Почати"}
-          </h2>
+          <h2>{savedAccounts.length ? "Створити профіль" : "Почати"}</h2>
           <form className="account-form" onSubmit={handleSubmit}>
             <label className="info-field">
-              <span>Ім’я</span>
+              <span>Username</span>
+              <input
+                className="account-input"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={username}
+                maxLength={20}
+                minLength={3}
+                pattern="[a-zA-Z0-9_]{3,20}"
+                title="Використовуй 3–20 латинських літер, цифр або символів _."
+                required
+                onChange={(event) => setUsername(event.target.value)}
+              />
+              <small className="account-note">
+                Username відрізняє профілі, але не є способом входу. Профіль
+                можна відкрити лише на пристрої, де його збережено.
+              </small>
+            </label>
+
+            <label className="info-field">
+              <span>Відображуване ім’я</span>
               <input
                 className="account-input"
                 type="text"

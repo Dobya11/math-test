@@ -39,7 +39,11 @@ function createSession(id: string, name: string): Session {
     user: {
       id,
       app_metadata: {},
-      user_metadata: { display_name: name, role: "student" },
+      user_metadata: {
+        username: `user_${id.replace(/-/g, "").slice(0, 15)}`,
+        display_name: name,
+        role: "student",
+      },
       aud: "authenticated",
       created_at: "2026-11-11T00:00:00.000Z",
     },
@@ -66,6 +70,7 @@ describe("saved account sessions", () => {
     expect(loadSavedAccounts()).toEqual([
       {
         id: "student-a",
+        username: "user_studenta",
         name: "Оля",
         role: "student",
         accessToken: "access-student-a",
@@ -73,6 +78,7 @@ describe("saved account sessions", () => {
       },
       {
         id: "student-b",
+        username: "user_studentb",
         name: "Максим",
         role: "student",
         accessToken: "access-student-b",
@@ -90,5 +96,22 @@ describe("saved account sessions", () => {
       JSON.stringify([{ id: "incomplete" }]),
     );
     expect(() => loadSavedAccounts()).toThrow("неправильний формат");
+  });
+
+  it("adds a fallback username when loading previously saved accounts", () => {
+    memoryStorage.setItem(
+      "mathTest_savedAccounts_v1",
+      JSON.stringify([
+        {
+          id: "12345678-1234-1234-1234-123456789abc",
+          name: "Оля",
+          role: "student",
+          accessToken: "access",
+          refreshToken: "refresh",
+        },
+      ]),
+    );
+
+    expect(loadSavedAccounts()[0].username).toBe("user_123456781234123");
   });
 });
