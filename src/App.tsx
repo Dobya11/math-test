@@ -4,12 +4,8 @@ import type { Session } from "@supabase/supabase-js";
 import "./App.css";
 import AccountGate from "./AccountGate.tsx";
 import { StudentDashboard, TeacherDashboard } from "./Classroom.tsx";
+import { getAuthEmailForUsername } from "./ts/auth.ts";
 import { getAccountProfile } from "./ts/classroom.ts";
-import {
-  loadSavedAccounts,
-  saveAccountSession,
-  type SavedAccount,
-} from "./ts/localAccounts.ts";
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
 import type { User } from "./ts/types.ts";
 
@@ -24,14 +20,8 @@ function normalizeError(error: unknown, fallbackMessage: string): Error {
   return new Error(fallbackMessage);
 }
 
-async function signOutLocally() {
-  const { error } = await getSupabase().auth.signOut({ scope: "local" });
-  if (error) throw error;
-}
-
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   const [accountChosen, setAccountChosen] = useState(false);
   const [profile, setProfile] = useState<{
     userId: string;
@@ -48,6 +38,12 @@ function App() {
     window.location.pathname.match(/^\/class\/(\d{6})\/?$/)?.[1] ?? "";
 
   useEffect(() => {
+    try {
+      localStorage.removeItem("mathTest_savedAccounts_v1");
+    } catch (error) {
+      console.error("Unable to remove legacy saved accounts.", error);
+    }
+
     if (!isSupabaseConfigured) return;
 
     let active = true;
@@ -56,19 +52,8 @@ function App() {
       data: { subscription },
     } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      setAccountChosen(Boolean(nextSession));
       setProfileError("");
-      if (nextSession) {
-        try {
-          setSavedAccounts(saveAccountSession(nextSession));
-        } catch (error) {
-          setProfileError(
-            normalizeError(
-              error,
-              "Не вдалося зберегти профіль на цьому пристрої.",
-            ).message,
-          );
-        }
-      }
     });
 
     void client.auth
@@ -77,10 +62,7 @@ function App() {
         if (!active) return;
         if (error) setProfileError(error.message);
         setSession(data.session);
-        const accounts = loadSavedAccounts();
-        setSavedAccounts(
-          data.session ? saveAccountSession(data.session) : accounts,
-        );
+        setAccountChosen(Boolean(data.session));
         setAuthReady(true);
       })
       .catch((error: unknown) => {
@@ -97,18 +79,14 @@ function App() {
     };
   }, []);
 
-  async function handleSelectAccount(savedAccount: SavedAccount) {
-    const { data, error } = await getSupabase().auth.setSession({
-      access_token: savedAccount.accessToken,
-      refresh_token: savedAccount.refreshToken,
+  async function handleSignIn(username: string, password: string) {
+    const { data, error } = await getSupabase().auth.signInWithPassword({
+      email: getAuthEmailForUsername(username),
+      password,
     });
-    if (error) {
-      throw new Error(`Не вдалося відновити сесію: ${error.message}`, {
-        cause: error,
-      });
-    }
-    if (!data.session || data.session.user.id !== savedAccount.id) {
-      throw new Error("Supabase повернув інший профіль замість вибраного.");
+    if (error) throw error;
+    if (!data.session) {
+      throw new Error("Supabase не повернув сесію. Перевір username і пароль.");
     }
     setSession(data.session);
     setAccountChosen(true);
@@ -116,6 +94,7 @@ function App() {
 
   async function handleCreateAccount(
     username: string,
+    password: string,
     displayName: string,
     role: "teacher" | "student",
   ) {
@@ -128,11 +107,9 @@ function App() {
       throw new Error("Цей username вже зайнятий. Обери інший.");
     }
 
-    if (session) {
-      setSavedAccounts(saveAccountSession(session));
-      await signOutLocally();
-    }
-    const { data, error } = await getSupabase().auth.signInAnonymously({
+    const { data, error } = await getSupabase().auth.signUp({
+      email: getAuthEmailForUsername(username),
+      password,
       options: {
         data: {
           username,
@@ -150,7 +127,9 @@ function App() {
       throw error;
     }
     if (!data.session) {
-      throw new Error("Supabase не повернув сесію нового профілю.");
+      throw new Error(
+        "Профіль створено, але Supabase не видав сесію. Попроси адміністратора вимкнути підтвердження email у Supabase Auth.",
+      );
     }
     setSession(data.session);
     setAccountChosen(true);
@@ -181,25 +160,11 @@ function App() {
   }, [session]);
 
   async function handleSignOut() {
-    const confirmed = window.confirm(
-      "Поточний профіль залишиться збереженим на цьому пристрої. Перейти до вибору акаунта?",
-    );
+    const confirmed = window.confirm("Вийти з профілю?");
     if (!confirmed) return;
-    if (session) {
-      try {
-        setSavedAccounts(saveAccountSession(session));
-      } catch (error) {
-        setProfileError(
-          normalizeError(
-            error,
-            "Не вдалося зберегти профіль на цьому пристрої.",
-          ).message,
-        );
-        return;
-      }
-    }
     try {
-      await signOutLocally();
+      const { error } = await getSupabase().auth.signOut();
+      if (error) throw error;
     } catch (error) {
       setProfileError(
         normalizeError(error, "Не вдалося вийти з профілю.").message,
@@ -227,9 +192,7 @@ function App() {
       ) : !accountChosen ? (
         <AccountGate
           inviteCode={inviteCode}
-          savedAccounts={savedAccounts}
-          activeAccountId={session?.user.id ?? null}
-          onSelectAccount={handleSelectAccount}
+          onSignIn={handleSignIn}
           onCreateAccount={handleCreateAccount}
         />
       ) : session && !account ? (
