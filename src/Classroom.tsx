@@ -40,13 +40,7 @@ function ErrorMessage({ message }: { message: string }) {
   );
 }
 
-function TeacherDashboard({
-  user,
-  onSignOut,
-}: {
-  user: User;
-  onSignOut: () => void;
-}) {
+function TeacherDashboard({ user }: { user: User }) {
   const [snapshot, setSnapshot] = useState<TeacherSnapshot | null>(null);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [questionsPerTopic, setQuestionsPerTopic] =
@@ -156,15 +150,8 @@ function TeacherDashboard({
         <div className="dashboard-heading">
           <div>
             <h1>{user.name}</h1>
-            <p>@{user.username} · Кабінет учителя · 2 клас</p>
+            <p>Кабінет учителя · 2 клас</p>
           </div>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={onSignOut}
-          >
-            Вийти
-          </button>
         </div>
       </PageCard>
 
@@ -261,10 +248,9 @@ function TeacherDashboard({
                       <div>
                         <strong>{member.name}</strong>
                         <p>
-                          @{member.username}
                           {attempts.length
-                            ? ` · ${attempts.length} спроб · ${completed.length} завершено`
-                            : " · Ще не починав завдань"}
+                            ? `${attempts.length} спроб · ${completed.length} завершено`
+                            : "Ще не починав завдань"}
                         </p>
                       </div>
                       <span aria-hidden="true">›</span>
@@ -409,7 +395,6 @@ function TeacherDashboard({
               Закрити
             </button>
             <h2 id="student-details-title">{selectedStudent.name}</h2>
-            <p>@{selectedStudent.username}</p>
             <h3>Спроби виконання</h3>
             {selectedAttempts.length === 0 ? (
               <p>Учень ще не розпочинав завдань.</p>
@@ -694,11 +679,9 @@ function AssignmentTest({
 function StudentDashboard({
   user,
   inviteCode,
-  onSignOut,
 }: {
   user: User;
   inviteCode: string;
-  onSignOut: () => void;
 }) {
   const [snapshot, setSnapshot] = useState<StudentSnapshot | null>(null);
   const [code, setCode] = useState(inviteCode);
@@ -771,16 +754,7 @@ function StudentDashboard({
         <div className="dashboard-heading">
           <div>
             <h1>{user.name}</h1>
-            <p>@{user.username} · Учень · 2 клас</p>
-          </div>
-          <div className="dashboard-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={onSignOut}
-            >
-              Вийти
-            </button>
+            <p>Учень · 2 клас</p>
           </div>
         </div>
       </PageCard>

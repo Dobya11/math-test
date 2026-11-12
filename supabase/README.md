@@ -1,12 +1,15 @@
 # Authentication setup
 
-The app uses Supabase email/password authentication with the username mapped to
-an internal address of the form `<username>@login.math-test.invalid`. The
-address is not a real mailbox.
+The app creates a passwordless anonymous Supabase account for each browser.
+The account ID is the Supabase UUID and the session persists in that browser.
+Clearing browser data or switching browsers/devices creates a different account;
+these accounts cannot be recovered or shared across devices.
 
-In the Supabase dashboard, enable the Email provider and disable email
-confirmation. Otherwise Supabase will create an account without returning a
-session, and the user cannot confirm the generated address.
+In the Supabase dashboard, enable Anonymous Sign-Ins under Auth providers.
 
-Existing anonymous accounts from older app versions cannot sign in with a
-username and password until they are migrated or recreated.
+Apply both migrations in order, including
+`migrations/20261113010000_use_uuid_profiles.sql`, to set each profile's
+username to its UUID and configure the profile trigger.
+
+No username or password is requested. Existing profiles keep their associated
+classroom data; the profile username field is changed to the profile UUID.

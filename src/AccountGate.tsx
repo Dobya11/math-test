@@ -3,24 +3,13 @@ import PageCard from "./components/Card.tsx";
 
 interface AccountGateProps {
   inviteCode: string;
-  onSignIn: (username: string, password: string) => Promise<void>;
   onCreateAccount: (
-    username: string,
-    password: string,
     displayName: string,
     role: "teacher" | "student",
   ) => Promise<void>;
 }
 
-function AccountGate({
-  inviteCode,
-  onSignIn,
-  onCreateAccount,
-}: AccountGateProps) {
-  const [username, setUsername] = useState("");
-  const [loginUsername, setLoginUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+function AccountGate({ inviteCode, onCreateAccount }: AccountGateProps) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<"teacher" | "student">(
     inviteCode ? "student" : "teacher",
@@ -28,35 +17,12 @@ function AccountGate({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function handleSignIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      await onSignIn(loginUsername.trim().toLowerCase(), loginPassword);
-    } catch (caughtError) {
-      const errorMessage =
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не вдалося увійти. Перевір username і пароль.";
-      console.error("Unable to sign in.", new Error(errorMessage));
-      setError(errorMessage);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleCreateAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await onCreateAccount(
-        username.trim().toLowerCase(),
-        password,
-        name.trim().replace(/\s+/g, " "),
-        role,
-      );
+      await onCreateAccount(name.trim().replace(/\s+/g, " "), role);
     } catch (caughtError) {
       const errorMessage =
         caughtError instanceof Error
@@ -77,7 +43,7 @@ function AccountGate({
           <p>
             {inviteCode
               ? `Запрошення до класу ${inviteCode}`
-              : "Увійди або створи профіль"}
+              : "Створи профіль на цьому пристрої"}
           </p>
         </PageCard>
 
@@ -88,80 +54,8 @@ function AccountGate({
             </p>
           )}
 
-          <h2>Увійти</h2>
-          <form className="account-form" onSubmit={handleSignIn}>
-            <label className="info-field">
-              <span>Username</span>
-              <input
-                className="account-input"
-                type="text"
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={loginUsername}
-                maxLength={20}
-                minLength={3}
-                pattern="[a-zA-Z0-9_]{3,20}"
-                required
-                onChange={(event) => setLoginUsername(event.target.value)}
-              />
-            </label>
-
-            <label className="info-field">
-              <span>Пароль</span>
-              <input
-                className="account-input"
-                type="password"
-                autoComplete="current-password"
-                value={loginPassword}
-                minLength={6}
-                required
-                onChange={(event) => setLoginPassword(event.target.value)}
-              />
-            </label>
-
-            <button type="submit" disabled={busy}>
-              {busy ? "Вхід…" : "Увійти"}
-            </button>
-          </form>
-
           <h2>Створити профіль</h2>
           <form className="account-form" onSubmit={handleCreateAccount}>
-            <label className="info-field">
-              <span>Username</span>
-              <input
-                className="account-input"
-                type="text"
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={username}
-                maxLength={20}
-                minLength={3}
-                pattern="[a-zA-Z0-9_]{3,20}"
-                title="Використовуй 3–20 латинських літер, цифр або символів _."
-                required
-                onChange={(event) => setUsername(event.target.value)}
-              />
-              <small className="account-note">
-                Username відрізняє профілі. Використовуй його разом із паролем
-                для входу з будь-якого пристрою.
-              </small>
-            </label>
-
-            <label className="info-field">
-              <span>Пароль (від 6 символів)</span>
-              <input
-                className="account-input"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                minLength={6}
-                required
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
-
             <label className="info-field">
               <span>Відображуване ім’я</span>
               <input
@@ -175,6 +69,11 @@ function AccountGate({
                 onChange={(event) => setName(event.target.value)}
               />
             </label>
+
+            <small className="account-note">
+              Профіль прив’язаний до цього браузера. Якщо очистити його дані,
+              створиться новий профіль.
+            </small>
 
             <fieldset className="role-picker">
               <legend>Я</legend>

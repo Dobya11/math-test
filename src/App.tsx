@@ -4,7 +4,6 @@ import type { Session } from "@supabase/supabase-js";
 import "./App.css";
 import AccountGate from "./AccountGate.tsx";
 import { StudentDashboard, TeacherDashboard } from "./Classroom.tsx";
-import { getAuthEmailForUsername } from "./ts/auth.ts";
 import { getAccountProfile } from "./ts/classroom.ts";
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
 import type { User } from "./ts/types.ts";
@@ -79,57 +78,29 @@ function App() {
     };
   }, []);
 
-  async function handleSignIn(username: string, password: string) {
-    const { data, error } = await getSupabase().auth.signInWithPassword({
-      email: getAuthEmailForUsername(username),
-      password,
-    });
-    if (error) throw error;
-    if (!data.session) {
-      throw new Error("Supabase не повернув сесію. Перевір username і пароль.");
-    }
-    setSession(data.session);
-    setAccountChosen(true);
-  }
-
   async function handleCreateAccount(
-    username: string,
-    password: string,
     displayName: string,
     role: "teacher" | "student",
   ) {
-    const { data: usernameAvailable, error: usernameError } =
-      await getSupabase().rpc("is_username_available", {
-        p_username: username,
-      });
-    if (usernameError) throw usernameError;
-    if (usernameAvailable !== true) {
-      throw new Error("Цей username вже зайнятий. Обери інший.");
-    }
-
-    const { data, error } = await getSupabase().auth.signUp({
-      email: getAuthEmailForUsername(username),
-      password,
+    const { data, error } = await getSupabase().auth.signInAnonymously({
       options: {
         data: {
-          username,
           display_name: displayName,
           role,
         },
       },
     });
     if (error) {
-      if (error.code === "23505" || /username|зайнятий/i.test(error.message)) {
-        throw new Error("Цей username вже зайнятий. Обери інший.", {
-          cause: error,
-        });
+      if (/anonymous.*disabled|anonymous.*not enabled/i.test(error.message)) {
+        throw new Error(
+          "У Supabase вимкнено анонімний вхід. Увімкни Anonymous Sign-Ins у налаштуваннях Auth.",
+          { cause: error },
+        );
       }
       throw error;
     }
     if (!data.session) {
-      throw new Error(
-        "Профіль створено, але Supabase не видав сесію. Попроси адміністратора вимкнути підтвердження email у Supabase Auth.",
-      );
+      throw new Error("Supabase не повернув сесію для нового профілю.");
     }
     setSession(data.session);
     setAccountChosen(true);
@@ -159,22 +130,6 @@ function App() {
     };
   }, [session]);
 
-  async function handleSignOut() {
-    const confirmed = window.confirm("Вийти з профілю?");
-    if (!confirmed) return;
-    try {
-      const { error } = await getSupabase().auth.signOut();
-      if (error) throw error;
-    } catch (error) {
-      setProfileError(
-        normalizeError(error, "Не вдалося вийти з профілю.").message,
-      );
-      return;
-    }
-    setProfileError("");
-    setAccountChosen(false);
-  }
-
   return (
     <div className="App">
       <Analytics />
@@ -192,7 +147,6 @@ function App() {
       ) : !accountChosen ? (
         <AccountGate
           inviteCode={inviteCode}
-          onSignIn={handleSignIn}
           onCreateAccount={handleCreateAccount}
         />
       ) : session && !account ? (
@@ -202,9 +156,6 @@ function App() {
             <p role="alert">
               {profileError || "Зачекай, профіль завантажується."}
             </p>
-            <button type="button" onClick={() => void handleSignOut()}>
-              Повернутися
-            </button>
           </section>
         </main>
       ) : account ? (
@@ -215,16 +166,9 @@ function App() {
             </p>
           )}
           {account.role === "teacher" ? (
-            <TeacherDashboard
-              user={account}
-              onSignOut={() => void handleSignOut()}
-            />
+            <TeacherDashboard user={account} />
           ) : (
-            <StudentDashboard
-              user={account}
-              inviteCode={inviteCode}
-              onSignOut={() => void handleSignOut()}
-            />
+            <StudentDashboard user={account} inviteCode={inviteCode} />
           )}
         </>
       ) : null}
