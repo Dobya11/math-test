@@ -1,14 +1,3 @@
-alter table public.profiles
-  drop constraint if exists profiles_username_format;
-
-update public.profiles
-set username = id::text
-where username is distinct from id::text;
-
-alter table public.profiles
-  add constraint profiles_username_format
-  check (username ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
-
 drop function if exists public.is_username_available(text);
 
 create or replace function public.handle_new_user()
@@ -36,8 +25,8 @@ begin
     raise exception 'Ім’я має містити від 2 до 60 символів.';
   end if;
 
-  insert into public.profiles (id, username, display_name, role)
-  values (new.id, new.id::text, selected_name, selected_role);
+  insert into public.profiles (id, display_name, role)
+  values (new.id, selected_name, selected_role);
 
   return new;
 end;
