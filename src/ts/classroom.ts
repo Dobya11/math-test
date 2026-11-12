@@ -22,7 +22,7 @@ export interface AssignmentQuestion {
   position: number;
   topic: string;
   prompt: string;
-  response_mode: "choice" | "text" | "boolean";
+  response_mode: "choice" | "text";
   answer_type: "number" | "comparator" | "text";
   options: string[] | null;
 }

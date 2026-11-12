@@ -654,19 +654,6 @@ function AssignmentTest({
                 </button>
               ))}
             </div>
-          ) : question.response_mode === "boolean" ? (
-            <div className="answer-buttons answer-buttons--text">
-              {["Правильно", "Неправильно"].map((option) => (
-                <button
-                  type="button"
-                  key={option}
-                  disabled={busy}
-                  onClick={() => void handleAnswer(option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
           ) : (
             <form
               className="assignment-answer"

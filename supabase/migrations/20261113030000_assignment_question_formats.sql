@@ -1,10 +1,10 @@
 alter table public.generated_questions
   add column if not exists options text[],
-  add column if not exists response_mode text not null default 'boolean';
+  add column if not exists response_mode text not null default 'text';
 
 alter table public.generated_questions
   add constraint generated_questions_response_mode_check
-  check (response_mode in ('choice', 'text', 'boolean'));
+  check (response_mode in ('choice', 'text'));
 
 create or replace function public.create_assignment_with_questions(
   p_classroom_id uuid,

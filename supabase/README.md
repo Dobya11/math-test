@@ -14,6 +14,8 @@ Apply `migrations/20261113020000_allow_assignment_topics.sql` after those
 migrations so the database accepts the assignment topics shown in the app.
 Apply `migrations/20261113030000_assignment_question_formats.sql` afterward
 to enable topic-specific questions with answer choices or text input.
+Then apply `migrations/20261113040000_remove_boolean_assignment_questions.sql`
+to remove the old true/false answer mode.
 
 No username or password is requested. Existing profiles keep their associated
 classroom data. Their UUID is available as the profile ID.
