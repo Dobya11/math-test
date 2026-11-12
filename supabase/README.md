@@ -10,6 +10,8 @@ In the Supabase dashboard, enable Anonymous Sign-Ins under Auth providers.
 Apply both migrations in order, including
 `migrations/20261113010000_use_uuid_profiles.sql`, to configure the profile
 trigger without requiring a username column.
+Apply `migrations/20261113020000_allow_assignment_topics.sql` after those
+migrations so the database accepts the assignment topics shown in the app.
 
 No username or password is requested. Existing profiles keep their associated
 classroom data. Their UUID is available as the profile ID.
