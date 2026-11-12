@@ -12,6 +12,8 @@ Apply both migrations in order, including
 trigger without requiring a username column.
 Apply `migrations/20261113020000_allow_assignment_topics.sql` after those
 migrations so the database accepts the assignment topics shown in the app.
+Apply `migrations/20261113030000_assignment_question_formats.sql` afterward
+to enable topic-specific questions with answer choices or text input.
 
 No username or password is requested. Existing profiles keep their associated
 classroom data. Their UUID is available as the profile ID.

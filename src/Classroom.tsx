@@ -16,20 +16,9 @@ import {
   type StudentSnapshot,
   type TeacherSnapshot,
 } from "./ts/classroom.ts";
+import { ASSIGNMENT_TOPICS } from "./ts/assignmentGenerator.ts";
 import type { User } from "./ts/types.ts";
 
-const TOPICS = [
-  "Повторення матеріалу 1 класу",
-  "Додавання і віднімання в межах 20",
-  "Додавання двоцифрових чисел",
-  "Віднімання двоцифрових чисел",
-  "Числа, нумерація та порівняння",
-  "Вирази й порядок дій",
-  "Текстові задачі",
-  "Величини та вимірювання",
-  "Геометрія й периметр",
-  "Множення та ділення",
-];
 const QUESTIONS_PER_TOPIC = [4, 8, 12] as const;
 
 function ErrorMessage({ message }: { message: string }) {
@@ -281,7 +270,7 @@ function TeacherDashboard({ user }: { user: User }) {
               <fieldset className="topic-picker">
                 <legend>Навчальні теми</legend>
                 <div className="topic-grid">
-                  {TOPICS.map((topic) => (
+                  {ASSIGNMENT_TOPICS.map((topic) => (
                     <label className="topic-option" key={topic}>
                       <input
                         type="checkbox"
@@ -448,6 +437,7 @@ function AssignmentTest({
   const [attemptId, setAttemptId] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
+  const [answerInput, setAnswerInput] = useState("");
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [result, setResult] = useState<boolean[] | null>(null);
   const [error, setError] = useState("");
@@ -468,6 +458,7 @@ function AssignmentTest({
       setAttemptId(nextAttemptId);
       setCurrentIndex(0);
       setAnswers([]);
+      setAnswerInput("");
       setFeedback(null);
       setResult(null);
     } catch (caughtError) {
@@ -481,17 +472,19 @@ function AssignmentTest({
     }
   }
 
-  async function handleAnswer(answer: "Правильно" | "Неправильно") {
+  async function handleAnswer(answer: string) {
     const question = questions[currentIndex];
     if (!question || !attemptId || feedback !== null) return;
 
     setBusy(true);
     setError("");
     try {
+      const response =
+        question.answer_type === "number" ? String(Number(answer)) : answer;
       const isCorrect = await submitAssignmentAnswer(
         attemptId,
         question.id,
-        answer,
+        response,
       );
       setAnswers((current) => [...current, isCorrect]);
       setFeedback(isCorrect);
@@ -509,6 +502,7 @@ function AssignmentTest({
   async function handleNext() {
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex((index) => index + 1);
+      setAnswerInput("");
       setFeedback(null);
       return;
     }
@@ -608,7 +602,10 @@ function AssignmentTest({
         </PageCard>
         <PageCard type="test">
           <p>{assignment.topics.join(", ")}</p>
-          <p>У кожному прикладі обери, чи правильно пораховано суму.</p>
+          <p>
+            На тебе чекають приклади, задачі й запитання з варіантами відповіді
+            або полем для введення.
+          </p>
           {error && <ErrorMessage message={error} />}
           <button
             type="button"
@@ -644,22 +641,55 @@ function AssignmentTest({
         )}
         {error && <ErrorMessage message={error} />}
         {feedback === null ? (
-          <div className="answer-buttons answer-buttons--text">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("Правильно")}
+          question.response_mode === "choice" && question.options ? (
+            <div className="answer-buttons answer-buttons--text">
+              {question.options.map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  disabled={busy}
+                  onClick={() => void handleAnswer(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          ) : question.response_mode === "boolean" ? (
+            <div className="answer-buttons answer-buttons--text">
+              {["Правильно", "Неправильно"].map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  disabled={busy}
+                  onClick={() => void handleAnswer(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <form
+              className="assignment-answer"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleAnswer(answerInput.trim());
+              }}
             >
-              Правильно
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleAnswer("Неправильно")}
-            >
-              Неправильно
-            </button>
-          </div>
+              <input
+                className="answer-input"
+                type={question.answer_type === "number" ? "number" : "text"}
+                value={answerInput}
+                disabled={busy}
+                onChange={(event) => setAnswerInput(event.target.value)}
+                aria-label="Твоя відповідь"
+                placeholder="Введи відповідь"
+                required
+              />
+              <button type="submit" disabled={busy || !answerInput.trim()}>
+                Перевірити
+              </button>
+            </form>
+          )
         ) : (
           <button
             type="button"

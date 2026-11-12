@@ -1,4 +1,5 @@
 import type { User } from "./types.ts";
+import { generateAssignmentQuestions } from "./assignmentGenerator.ts";
 import { getSupabase } from "./supabase.ts";
 
 export interface Classroom {
@@ -21,6 +22,9 @@ export interface AssignmentQuestion {
   position: number;
   topic: string;
   prompt: string;
+  response_mode: "choice" | "text" | "boolean";
+  answer_type: "number" | "comparator" | "text";
+  options: string[] | null;
 }
 
 export interface Attempt {
@@ -208,12 +212,20 @@ export async function createAssignment(input: {
   topics: string[];
   questionsPerTopic: 4 | 8 | 12;
 }): Promise<void> {
-  const { data, error } = await getSupabase().rpc("create_assignment", {
-    p_classroom_id: input.classroomId,
-    p_title: input.title.trim(),
-    p_topics: input.topics,
-    p_questions_per_topic: input.questionsPerTopic,
-  });
+  const questions = generateAssignmentQuestions(
+    input.topics,
+    input.questionsPerTopic,
+  );
+  const { data, error } = await getSupabase().rpc(
+    "create_assignment_with_questions",
+    {
+      p_classroom_id: input.classroomId,
+      p_title: input.title.trim(),
+      p_topics: input.topics,
+      p_questions_per_topic: input.questionsPerTopic,
+      p_questions: questions,
+    },
+  );
   if (error) throw error;
   if (typeof data !== "string") {
     throw new Error("Не вдалося створити завдання.");
@@ -225,7 +237,7 @@ export async function getAssignmentQuestions(
 ): Promise<AssignmentQuestion[]> {
   const { data, error } = await getSupabase()
     .from("generated_questions")
-    .select("id,position,topic,prompt")
+    .select("id,position,topic,prompt,response_mode,answer_type,options")
     .eq("assignment_id", assignmentId)
     .order("position");
   if (error) throw error;
@@ -248,7 +260,7 @@ export async function startAssignmentAttempt(
 export async function submitAssignmentAnswer(
   attemptId: string,
   questionId: string,
-  answer: "Правильно" | "Неправильно",
+  answer: string,
 ): Promise<boolean> {
   const { data, error } = await getSupabase().rpc("submit_assignment_answer", {
     p_attempt_id: attemptId,

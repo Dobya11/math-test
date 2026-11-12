@@ -854,8 +854,21 @@ button:disabled {
   font-size: 1rem;
 }
 
+.assignment-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.assignment-answer .answer-input {
+  width: min(100%, 400px);
+}
+
 .answer-buttons {
   display: flex;
+  flex-wrap: wrap;
 
   justify-content: center;
 
