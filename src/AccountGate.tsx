@@ -22,6 +22,7 @@ function AccountGate({
   onCreateAccount,
 }: AccountGateProps) {
   const [username, setUsername] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<"teacher" | "student">(
     inviteCode ? "student" : "teacher",
@@ -35,12 +36,35 @@ function AccountGate({
     try {
       await onSelectAccount(account);
     } catch (caughtError) {
-      console.error("Unable to restore the saved account.", caughtError);
-      setError(
+      const errorMessage =
         caughtError instanceof Error
           ? caughtError.message
-          : "Не вдалося відкрити збережений профіль.",
-      );
+          : "Не вдалося відкрити збережений профіль.";
+      console.error("Unable to restore the saved account.", new Error(errorMessage));
+      setError(errorMessage);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleQuickLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const targetUsername = loginUsername.trim().toLowerCase();
+    setError("");
+    if (!targetUsername) {
+      setError("Введи username, щоб увійти до локального профілю.");
+      return;
+    }
+    const matchingAccount = savedAccounts.find(
+      (account) => account.username.toLowerCase() === targetUsername,
+    );
+    if (!matchingAccount) {
+      setError("Профіль з таким username не знайдено на цьому пристрої.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await handleSelectAccount(matchingAccount);
     } finally {
       setBusy(false);
     }
@@ -58,12 +82,12 @@ function AccountGate({
         role,
       );
     } catch (caughtError) {
-      console.error("Unable to create the account.", caughtError);
-      setError(
+      const errorMessage =
         caughtError instanceof Error
           ? caughtError.message
-          : "Не вдалося створити профіль. Спробуйте ще раз.",
-      );
+          : "Не вдалося створити профіль. Спробуйте ще раз.";
+      console.error("Unable to create the account.", new Error(errorMessage));
+      setError(errorMessage);
     } finally {
       setBusy(false);
     }
@@ -116,6 +140,28 @@ function AccountGate({
                 Профілі збережені лише в цьому браузері на цьому пристрої.
               </p>
             </>
+          )}
+
+          {savedAccounts.length > 0 && (
+            <form className="account-form" onSubmit={handleQuickLogin}>
+              <label className="info-field">
+                <span>Швидкий вхід за username</span>
+                <input
+                  className="account-input"
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={loginUsername}
+                  placeholder="Наприклад: user_olya"
+                  maxLength={20}
+                  onChange={(event) => setLoginUsername(event.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={busy}>
+                {busy ? "Вхід…" : "Увійти у локальний профіль"}
+              </button>
+            </form>
           )}
 
           <h2>{savedAccounts.length ? "Створити профіль" : "Почати"}</h2>

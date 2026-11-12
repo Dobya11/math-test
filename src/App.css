@@ -1,5 +1,4 @@
 /*#region init*/
-@import url("https://fonts.googleapis.com/css2?family=Shantell+Sans:ital,wght@0,300..800;1,300..800&display=swap");
 :root {
   --blue-1: #470ff4;
   --blue-2: #4056f4;
@@ -33,7 +32,7 @@
 
 * {
   box-sizing: border-box;
-  font-family: "Shantell Sans", sans-serif;
+  font-family: "Segoe UI", "Arial", "Helvetica", sans-serif;
   transition: transform 250ms ease;
 }
 

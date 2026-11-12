@@ -13,6 +13,17 @@ import {
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
 import type { User } from "./ts/types.ts";
 
+function normalizeError(error: unknown, fallbackMessage: string): Error {
+  if (error instanceof Error) return error;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = String((error as { message?: unknown }).message ?? "");
+    if (message) {
+      return new Error(message);
+    }
+  }
+  return new Error(fallbackMessage);
+}
+
 async function signOutLocally() {
   const { error } = await getSupabase().auth.signOut({ scope: "local" });
   if (error) throw error;
@@ -51,9 +62,10 @@ function App() {
           setSavedAccounts(saveAccountSession(nextSession));
         } catch (error) {
           setProfileError(
-            error instanceof Error
-              ? error.message
-              : "Не вдалося зберегти профіль на цьому пристрої.",
+            normalizeError(
+              error,
+              "Не вдалося зберегти профіль на цьому пристрої.",
+            ).message,
           );
         }
       }
@@ -74,9 +86,7 @@ function App() {
       .catch((error: unknown) => {
         if (!active) return;
         setProfileError(
-          error instanceof Error
-            ? error.message
-            : "Не вдалося перевірити профіль.",
+          normalizeError(error, "Не вдалося перевірити профіль.").message,
         );
         setAuthReady(true);
       });
@@ -160,9 +170,7 @@ function App() {
       .catch((error: unknown) => {
         if (active) {
           setProfileError(
-            error instanceof Error
-              ? error.message
-              : "Не вдалося завантажити профіль.",
+            normalizeError(error, "Не вдалося завантажити профіль.").message,
           );
         }
       });
@@ -182,9 +190,10 @@ function App() {
         setSavedAccounts(saveAccountSession(session));
       } catch (error) {
         setProfileError(
-          error instanceof Error
-            ? error.message
-            : "Не вдалося зберегти профіль на цьому пристрої.",
+          normalizeError(
+            error,
+            "Не вдалося зберегти профіль на цьому пристрої.",
+          ).message,
         );
         return;
       }
@@ -193,7 +202,7 @@ function App() {
       await signOutLocally();
     } catch (error) {
       setProfileError(
-        error instanceof Error ? error.message : "Не вдалося вийти з профілю.",
+        normalizeError(error, "Не вдалося вийти з профілю.").message,
       );
       return;
     }
