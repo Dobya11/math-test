@@ -458,7 +458,7 @@ function AssignmentTest({
     setError("");
     try {
       const nextAttemptId = await startAssignmentAttempt(assignment.id);
-      const nextQuestions = await getAssignmentQuestions(nextAttemptId);
+      const nextQuestions = await getAssignmentQuestions(assignment.id);
       if (nextQuestions.length === 0) {
         throw new Error(
           "Для цього завдання ще немає питань. Попроси вчителя створити нове.",
