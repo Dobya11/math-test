@@ -139,20 +139,42 @@ export async function getTeacherSnapshot(
     joined_at: member.joined_at,
   }));
 
+  const attemptSelect =
+    "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at,question_summaries";
+
   const attemptResult =
     assignments.length > 0
       ? await client
           .from("attempts")
-          .select(
-            "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at",
-          )
+          .select(attemptSelect)
           .in(
             "assignment_id",
             assignments.map(({ id }) => id),
           )
           .order("started_at", { ascending: false })
       : { data: [], error: null };
-  if (attemptResult.error) throw attemptResult.error;
+  if (attemptResult.error) {
+    const fallbackResult =
+      assignments.length > 0
+        ? await client
+            .from("attempts")
+            .select(
+              "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at",
+            )
+            .in(
+              "assignment_id",
+              assignments.map(({ id }) => id),
+            )
+            .order("started_at", { ascending: false })
+        : { data: [], error: null };
+    if (fallbackResult.error) throw fallbackResult.error;
+    return {
+      classroom,
+      members,
+      assignments,
+      attempts: fallbackResult.data ?? [],
+    };
+  }
 
   return {
     classroom,
@@ -182,13 +204,14 @@ export async function getStudentSnapshot(
   if (classroomError) throw classroomError;
 
   const assignments = await getAssignments(classroom.id);
+  const attemptSelect =
+    "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at,question_summaries";
+
   const attemptResult =
     assignments.length > 0
       ? await client
           .from("attempts")
-          .select(
-            "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at",
-          )
+          .select(attemptSelect)
           .eq("student_id", studentId)
           .in(
             "assignment_id",
@@ -196,7 +219,24 @@ export async function getStudentSnapshot(
           )
           .order("started_at", { ascending: false })
       : { data: [], error: null };
-  if (attemptResult.error) throw attemptResult.error;
+  if (attemptResult.error) {
+    const fallbackResult =
+      assignments.length > 0
+        ? await client
+            .from("attempts")
+            .select(
+              "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at",
+            )
+            .eq("student_id", studentId)
+            .in(
+              "assignment_id",
+              assignments.map(({ id }) => id),
+            )
+            .order("started_at", { ascending: false })
+        : { data: [], error: null };
+    if (fallbackResult.error) throw fallbackResult.error;
+    return { classroom, assignments, attempts: fallbackResult.data ?? [] };
+  }
 
   return { classroom, assignments, attempts: attemptResult.data ?? [] };
 }

@@ -156,10 +156,12 @@ export function generateAssignmentQuestions(
       const difficulty: Difficulty =
         index < Math.ceil(questionsPerTopic / 2) ? "easy" : "medium";
       const question = generateForTopic(topic, difficulty);
+      const isComparatorQuestion = question.answerType === "comparator";
       const usesTextInput =
-        question.typeId === "word_problem" ||
-        (question.typeId === "measurements" && index % 2 === 0) ||
-        index % 4 === 3;
+        !isComparatorQuestion &&
+        (question.typeId === "word_problem" ||
+          (question.typeId === "measurements" && index % 2 === 0) ||
+          index % 4 === 3);
 
       return {
         topic,

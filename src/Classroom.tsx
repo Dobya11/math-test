@@ -675,19 +675,35 @@ function AssignmentTest({
         )}
         {error && <ErrorMessage message={error} />}
         {feedback === null ? (
-          question.response_mode === "choice" && question.options ? (
-            <div className="answer-buttons answer-buttons--text">
-              {question.options.map((option) => (
-                <button
-                  type="button"
-                  key={option}
-                  disabled={busy}
-                  onClick={() => void handleAnswer(option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+          question.answer_type === "comparator" ||
+          (question.response_mode === "choice" && question.options) ? (
+            question.answer_type === "comparator" ? (
+              <div className="answer-buttons answer-buttons--text">
+                {["<", "=", ">"].map((option) => (
+                  <button
+                    type="button"
+                    key={option}
+                    disabled={busy}
+                    onClick={() => void handleAnswer(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="answer-buttons answer-buttons--text">
+                {question.options?.map((option) => (
+                  <button
+                    type="button"
+                    key={option}
+                    disabled={busy}
+                    onClick={() => void handleAnswer(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )
           ) : (
             <form
               className="assignment-answer"

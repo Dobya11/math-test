@@ -37,6 +37,25 @@ describe("generateAssignmentQuestions", () => {
     }
   });
 
+  it("keeps comparison questions in choice mode instead of text input", () => {
+    let comparisonQuestions: ReturnType<typeof generateAssignmentQuestions> = [];
+
+    for (let attempt = 0; attempt < 50 && comparisonQuestions.length === 0; attempt += 1) {
+      comparisonQuestions = generateAssignmentQuestions(
+        ["Числа, нумерація та порівняння"],
+        12,
+      ).filter(({ answer_type }) => answer_type === "comparator");
+    }
+
+    expect(comparisonQuestions.length).toBeGreaterThan(0);
+
+    for (const question of comparisonQuestions) {
+      expect(question.options).not.toBeNull();
+      expect(question.options).toEqual(expect.arrayContaining(["<", "=", ">"]));
+      expect(question.options).toContain(question.correct_answer);
+    }
+  });
+
   it("generates perimeter questions with the matching numeric answer", () => {
     const questions = generateAssignmentQuestions(["Геометрія й периметр"], 12);
 
