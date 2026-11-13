@@ -27,6 +27,12 @@ export interface AssignmentQuestion {
   options: string[] | null;
 }
 
+export interface AttemptQuestionSummary {
+  prompt: string;
+  studentAnswer: string;
+  isCorrect: boolean;
+}
+
 export interface Attempt {
   id: string;
   assignment_id: string;
@@ -36,6 +42,7 @@ export interface Attempt {
   total_questions: number;
   started_at: string;
   completed_at: string | null;
+  question_summaries?: AttemptQuestionSummary[];
 }
 
 export interface ClassMember {

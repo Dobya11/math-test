@@ -12,6 +12,8 @@
   --white-2: #eef0f2;
 
   --red-1: #f7483b;
+  --green-1: #2ec27e;
+  --green-2: #58cc02;
 
   --primary-color: var(--blue-2);
   --primary-color-fg: var(--blue-1);
@@ -456,8 +458,69 @@ select.info-item option:hover {
   border-radius: 1rem;
 }
 
+.attempt-item {
+  display: grid;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.attempt-item > div:last-child {
+  text-align: left;
+}
+
+.attempt-question-list {
+  display: grid;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+}
+
+.attempt-question-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  background-color: rgba(17, 25, 92, 0.06);
+}
+
+.attempt-question-item--correct {
+  background-color: rgba(46, 194, 126, 0.2);
+}
+
+.attempt-question-item--incorrect {
+  background-color: rgba(247, 72, 59, 0.18);
+}
+
+.attempt-question-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+.attempt-question-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.attempt-question-copy strong {
+  font-size: 0.9rem;
+}
+
+.attempt-question-copy small {
+  opacity: 0.8;
+}
+
 .history-item > div:last-child {
   text-align: right;
+}
+
+.history-item.attempt-item > div:last-child {
+  text-align: left;
 }
 
 .history-item p {
@@ -989,11 +1052,11 @@ button:disabled {
 }
 
 .feedback-bar--correct {
-  background-color: #58cc02;
+  background: linear-gradient(180deg, rgba(88, 204, 2, 0.94), rgba(31, 153, 40, 0.98));
 }
 
 .feedback-bar--incorrect {
-  background-color: #ff4b4b;
+  background: linear-gradient(180deg, rgba(255, 124, 90, 0.96), rgba(214, 56, 62, 0.98));
 }
 
 .feedback-bar__text {

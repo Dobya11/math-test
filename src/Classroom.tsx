@@ -393,12 +393,14 @@ function TeacherDashboard({ user }: { user: User }) {
                   const assignment = snapshot?.assignments.find(
                     ({ id }) => id === attempt.assignment_id,
                   );
+                  const questionSummaries = attempt.question_summaries ?? [];
+                  const isCompleted = attempt.status === "completed";
                   return (
-                    <div className="history-item" key={attempt.id}>
+                    <div className="history-item attempt-item" key={attempt.id}>
                       <div>
                         <strong>{assignment?.title ?? "Завдання"}</strong>
                         <p>
-                          {attempt.status === "completed"
+                          {isCompleted
                             ? `Завершено · ${attempt.completed_at ? new Date(attempt.completed_at).toLocaleString("uk-UA") : ""}`
                             : "У процесі"}
                         </p>
@@ -408,12 +410,36 @@ function TeacherDashboard({ user }: { user: User }) {
                           {attempt.score ?? 0} з {attempt.total_questions}
                         </strong>
                         <p>
-                          {attempt.status === "completed" &&
-                          attempt.total_questions > 0
+                          {isCompleted && attempt.total_questions > 0
                             ? `${Math.round(((attempt.score ?? 0) / attempt.total_questions) * 100)}% правильно`
                             : "Ще не завершено"}
                         </p>
                       </div>
+                      {questionSummaries.length > 0 && (
+                        <div className="attempt-question-list">
+                          {questionSummaries.map((summary, index) => (
+                            <div
+                              className={[
+                                "attempt-question-item",
+                                summary.isCorrect
+                                  ? "attempt-question-item--correct"
+                                  : "attempt-question-item--incorrect",
+                              ].join(" ")}
+                              key={`${attempt.id}-${index}`}
+                            >
+                              <span className="attempt-question-number">
+                                {index + 1}
+                              </span>
+                              <div className="attempt-question-copy">
+                                <strong>{summary.prompt}</strong>
+                                <small>
+                                  Відповідь: {summary.studentAnswer || "—"}
+                                </small>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -438,7 +464,10 @@ function AssignmentTest({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
   const [answerInput, setAnswerInput] = useState("");
-  const [feedback, setFeedback] = useState<boolean | null>(null);
+  const [feedback, setFeedback] = useState<{
+    isCorrect: boolean;
+    message: string;
+  } | null>(null);
   const [result, setResult] = useState<boolean[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -487,7 +516,12 @@ function AssignmentTest({
         response,
       );
       setAnswers((current) => [...current, isCorrect]);
-      setFeedback(isCorrect);
+      setFeedback({
+        isCorrect,
+        message: isCorrect
+          ? "Правильно! Ти відповів вірно."
+          : "Неправильно. Спробуй наступне!",
+      });
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -636,7 +670,7 @@ function AssignmentTest({
         <h2>{question.prompt}</h2>
         {feedback !== null && (
           <p className="result-message" role="status">
-            {feedback ? "Правильно!" : "Неправильно. Спробуй наступне!"}
+            {feedback.isCorrect ? "Правильно!" : "Неправильно. Спробуй наступне!"}
           </p>
         )}
         {error && <ErrorMessage message={error} />}
@@ -689,6 +723,31 @@ function AssignmentTest({
           </button>
         )}
       </PageCard>
+      {feedback && (
+        <div
+          className={[
+            "feedback-bar",
+            "feedback-bar--visible",
+            feedback.isCorrect ? "feedback-bar--correct" : "feedback-bar--incorrect",
+          ].join(" ")}
+          role="status"
+        >
+          <div className="feedback-bar__text">
+            <p className="feedback-bar__title">
+              {feedback.isCorrect ? "Правильно!" : "Неправильно"}
+            </p>
+            <p className="feedback-bar__answer">{feedback.message}</p>
+          </div>
+          <button
+            type="button"
+            className="feedback-bar__next"
+            onClick={() => void handleNext()}
+            disabled={busy}
+          >
+            {currentIndex + 1 === questions.length ? "Результат" : "Далі"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
