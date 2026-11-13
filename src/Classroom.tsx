@@ -21,6 +21,19 @@ import type { User } from "./ts/types.ts";
 
 const QUESTIONS_PER_TOPIC = [4, 8, 12] as const;
 
+const TOPIC_DESCRIPTIONS: Record<string, string> = {
+  "Повторення матеріалу 1 класу": "Основи обчислень і порівняння",
+  "Додавання і віднімання в межах 20": "Швидкі обчислення в межах 20",
+  "Додавання двоцифрових чисел": "Складання чисел з переходом через десяток",
+  "Віднімання двоцифрових чисел": "Віднімання у двоцифрових числах",
+  "Числа, нумерація та порівняння": "Числа, розряди та знак порівняння",
+  "Вирази й порядок дій": "Порядок виконання дій у виразах",
+  "Текстові задачі": "Розв’язування задач у життєвих ситуаціях",
+  "Величини та вимірювання": "Довжина, маса, час та одиниці вимірювання",
+  "Геометрія й периметр": "Периметр фігур та геометричні задачі",
+  "Множення та ділення": "Табличне множення і ділення",
+};
+
 function ErrorMessage({ message }: { message: string }) {
   return (
     <p className="account-error" role="alert">
@@ -83,7 +96,14 @@ function TeacherDashboard({ user }: { user: User }) {
 
   async function handleCreateAssignment(event: React.FormEvent) {
     event.preventDefault();
-    if (!snapshot?.classroom || selectedTopics.length === 0) return;
+    if (!snapshot?.classroom) {
+      setError("Спочатку створіть клас, щоб додавати завдання.");
+      return;
+    }
+    if (selectedTopics.length === 0) {
+      setError("Виберіть хоча б одну навчальну тему.");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -253,8 +273,8 @@ function TeacherDashboard({ user }: { user: User }) {
           <PageCard type="analysis">
             <h2>Створити завдання</h2>
             <p>
-              Для кожної теми учні отримають приклади на додавання з вибором
-              правильної відповіді.
+              Виберіть теми й кількість прикладів для кожної з них. Задачі
+              формуються під рівень навчальної програми.
             </p>
             <form className="assignment-form" onSubmit={handleCreateAssignment}>
               <label className="info-field">
@@ -270,43 +290,67 @@ function TeacherDashboard({ user }: { user: User }) {
               <fieldset className="topic-picker">
                 <legend>Навчальні теми</legend>
                 <div className="topic-grid">
-                  {ASSIGNMENT_TOPICS.map((topic) => (
-                    <label className="topic-option" key={topic}>
-                      <input
-                        type="checkbox"
-                        checked={selectedTopics.includes(topic)}
-                        onChange={(event) =>
-                          setSelectedTopics((current) =>
-                            event.target.checked
-                              ? [...current, topic]
-                              : current.filter((value) => value !== topic),
-                          )
-                        }
-                      />
-                      <span>{topic}</span>
-                    </label>
-                  ))}
+                  {ASSIGNMENT_TOPICS.map((topic) => {
+                    const selected = selectedTopics.includes(topic);
+                    return (
+                      <label
+                        className={`topic-option${selected ? " selected" : ""}`}
+                        key={topic}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={(event) =>
+                            setSelectedTopics((current) => {
+                              if (event.target.checked) {
+                                return current.includes(topic)
+                                  ? current
+                                  : [...current, topic];
+                              }
+                              return current.filter((value) => value !== topic);
+                            })
+                          }
+                        />
+                        <span className="topic-option-body">
+                          <span className="topic-option-title">{topic}</span>
+                          <span className="topic-option-meta">
+                            {TOPIC_DESCRIPTIONS[topic]}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
               <fieldset className="topic-picker">
                 <legend>Завдань на одну тему</legend>
-                <div className="topic-grid">
+                <div className="topic-grid compact-grid">
                   {QUESTIONS_PER_TOPIC.map((count) => (
-                    <label className="topic-option" key={count}>
+                    <label
+                      className={`topic-option secondary-option${
+                        questionsPerTopic === count ? " selected" : ""
+                      }`}
+                      key={count}
+                    >
                       <input
                         type="radio"
                         name="questions-per-topic"
                         checked={questionsPerTopic === count}
                         onChange={() => setQuestionsPerTopic(count)}
                       />
-                      <span>{count} завдань</span>
+                      <span className="topic-option-body">
+                        <span className="topic-option-title">{count} завдань</span>
+                        <span className="topic-option-meta">
+                          {count === 4 ? "Коротка практика" : count === 8 ? "Середній блок" : "Повна перевірка"}
+                        </span>
+                      </span>
                     </label>
                   ))}
                 </div>
               </fieldset>
               <p className="assignment-total">
-                Загальна кількість:{" "}
-                <strong>{selectedTopics.length * questionsPerTopic}</strong>
+                Вибрано тем: <strong>{selectedTopics.length}</strong> · Загальна
+                кількість: <strong>{selectedTopics.length * questionsPerTopic}</strong>
               </p>
               <button
                 type="submit"

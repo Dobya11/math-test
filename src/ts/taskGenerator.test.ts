@@ -5,6 +5,7 @@ import {
   GRADE_TASK_TYPES,
   generateQuestion,
   generateTestQuestions,
+  increaseDifficulty,
 } from "./taskGenerator.ts";
 import type { Grade } from "./types.ts";
 
@@ -173,6 +174,13 @@ describe("generateQuestion", () => {
           GRADE_TASK_TYPES[2].some((type) => type.id === typeId),
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("increaseDifficulty", () => {
+    it("raises easy questions to the higher curriculum level while keeping medium as the maximum", () => {
+      expect(increaseDifficulty("easy")).toBe("medium");
+      expect(increaseDifficulty("medium")).toBe("medium");
     });
   });
 

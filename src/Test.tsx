@@ -15,6 +15,7 @@ import {
   GRADE_TASK_TYPES,
   generateQuestion,
   generateTestQuestions,
+  increaseDifficulty,
 } from "./ts/taskGenerator.ts";
 import { getWeakTypeIds, levelFromStats, saveResult } from "./ts/storage.ts";
 import { secondsUntil } from "./ts/timer.ts";
@@ -218,17 +219,19 @@ function Test({
 
     setAnswers(newAnswers);
     const nextIndex = currentIndex + 1;
-    if (!isCorrect && nextIndex < questions.length) {
+    if (nextIndex < questions.length) {
       const nextQuestion = questionOverrides[nextIndex] ?? questions[nextIndex];
-      const easierDifficulty = decreaseDifficulty(currentQuestion.difficulty);
+      const targetDifficulty = isCorrect
+        ? increaseDifficulty(currentQuestion.difficulty)
+        : decreaseDifficulty(currentQuestion.difficulty);
 
-      if (nextQuestion.difficulty !== easierDifficulty) {
+      if (nextQuestion.difficulty !== targetDifficulty) {
         setQuestionOverrides((overrides) => ({
           ...overrides,
           [nextIndex]: generateQuestion(
             grade,
             nextQuestion.typeId,
-            easierDifficulty,
+            targetDifficulty,
           ),
         }));
       }

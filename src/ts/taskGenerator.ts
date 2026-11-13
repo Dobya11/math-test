@@ -671,6 +671,10 @@ export function generateTestQuestions(
   });
 }
 
+export function increaseDifficulty(difficulty: Difficulty): Difficulty {
+  return difficulty === "easy" ? "medium" : difficulty;
+}
+
 export function decreaseDifficulty(difficulty: Difficulty): Difficulty {
   return difficulty === "medium" ? "easy" : difficulty;
 }
