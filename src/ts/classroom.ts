@@ -74,13 +74,14 @@ async function getAssignments(classroomId: string): Promise<Assignment[]> {
   return data ?? [];
 }
 
-export async function getAccountProfile(userId: string): Promise<User> {
+export async function getAccountProfile(userId: string): Promise<User | null> {
   const { data, error } = await getSupabase()
     .from("profiles")
     .select("id,display_name,role")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  if (!data) return null;
   if (data.role !== "teacher" && data.role !== "student") {
     throw new Error("У профілі вказано невідому роль.");
   }

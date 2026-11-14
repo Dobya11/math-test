@@ -8,17 +8,6 @@ import { getAccountProfile } from "./ts/classroom.ts";
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
 import type { User } from "./ts/types.ts";
 
-function normalizeError(error: unknown, fallbackMessage: string): Error {
-  if (error instanceof Error) return error;
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String((error as { message?: unknown }).message ?? "");
-    if (message) {
-      return new Error(message);
-    }
-  }
-  return new Error(fallbackMessage);
-}
-
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [accountChosen, setAccountChosen] = useState(false);
@@ -59,16 +48,18 @@ function App() {
       .getSession()
       .then(({ data, error }) => {
         if (!active) return;
-        if (error) setProfileError(error.message);
+        if (error) {
+          console.error("Unable to check the current session.", error);
+          setProfileError("Не вдалося перевірити профіль. Спробуйте ще раз.");
+        }
         setSession(data.session);
         setAccountChosen(Boolean(data.session));
         setAuthReady(true);
       })
       .catch((error: unknown) => {
         if (!active) return;
-        setProfileError(
-          normalizeError(error, "Не вдалося перевірити профіль.").message,
-        );
+        console.error("Unable to check the current session.", error);
+        setProfileError("Не вдалося перевірити профіль. Спробуйте ще раз.");
         setAuthReady(true);
       });
 
@@ -93,7 +84,7 @@ function App() {
     if (error) {
       if (/anonymous.*disabled|anonymous.*not enabled/i.test(error.message)) {
         throw new Error(
-          "У Supabase вимкнено анонімний вхід. Увімкни Anonymous Sign-Ins у налаштуваннях Auth.",
+          "У Supabase вимкнено анонімний вхід. Увімкни його в налаштуваннях автентифікації.",
           { cause: error },
         );
       }
@@ -111,17 +102,30 @@ function App() {
 
     let active = true;
     void getAccountProfile(session.user.id)
-      .then((nextProfile) => {
-        if (active) {
-          setProfile({ userId: session.user.id, account: nextProfile });
+      .then(async (nextProfile) => {
+        if (!active) return;
+        if (!nextProfile) {
+          setProfile(null);
           setProfileError("");
+          try {
+            const { error } = await getSupabase().auth.signOut();
+            if (error) throw error;
+          } catch (error) {
+            console.error("Unable to sign out without an account.", error);
+            if (active) {
+              setProfileError("Не вдалося завершити сесію. Спробуйте ще раз.");
+            }
+          }
+          return;
         }
+
+        setProfile({ userId: session.user.id, account: nextProfile });
+        setProfileError("");
       })
       .catch((error: unknown) => {
         if (active) {
-          setProfileError(
-            normalizeError(error, "Не вдалося завантажити профіль.").message,
-          );
+          console.error("Unable to load the account profile.", error);
+          setProfileError("Не вдалося завантажити профіль. Спробуйте ще раз.");
         }
       });
 

@@ -25,10 +25,11 @@ function AccountGate({ inviteCode, onCreateAccount }: AccountGateProps) {
       await onCreateAccount(name.trim().replace(/\s+/g, " "), role);
     } catch (caughtError) {
       const errorMessage =
-        caughtError instanceof Error
+        caughtError instanceof Error &&
+        caughtError.message.startsWith("У Supabase вимкнено анонімний вхід.")
           ? caughtError.message
           : "Не вдалося створити профіль. Спробуйте ще раз.";
-      console.error("Unable to create the account.", new Error(errorMessage));
+      console.error("Unable to create the account.", caughtError);
       setError(errorMessage);
     } finally {
       setBusy(false);
@@ -39,7 +40,7 @@ function AccountGate({ inviteCode, onCreateAccount }: AccountGateProps) {
     <main className="account-main">
       <div className="screen account-screen">
         <PageCard type="header">
-          <h1>Математика · 2 клас</h1>
+          <h1>Математика</h1>
           <p>
             {inviteCode
               ? `Запрошення до класу ${inviteCode}`
@@ -70,11 +71,6 @@ function AccountGate({ inviteCode, onCreateAccount }: AccountGateProps) {
               />
             </label>
 
-            <small className="account-note">
-              Профіль прив’язаний до цього браузера. Якщо очистити його дані,
-              створиться новий профіль.
-            </small>
-
             <fieldset className="role-picker">
               <legend>Я</legend>
               {(["teacher", "student"] as const).map((nextRole) => (
@@ -86,7 +82,7 @@ function AccountGate({ inviteCode, onCreateAccount }: AccountGateProps) {
                     checked={role === nextRole}
                     onChange={() => setRole(nextRole)}
                   />
-                  <span>{nextRole === "teacher" ? "Учитель" : "Учень"}</span>
+                  <span>{nextRole === "teacher" ? "Вчитель" : "Учень"}</span>
                 </label>
               ))}
             </fieldset>
