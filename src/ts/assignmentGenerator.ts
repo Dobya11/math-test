@@ -147,8 +147,12 @@ export function generateAssignmentQuestions(
   ) {
     throw new Error("Оберіть одну або кілька різних навчальних тем.");
   }
-  if (![4, 8, 12].includes(questionsPerTopic)) {
-    throw new Error("Кількість завдань на тему має бути 4, 8 або 12.");
+  if (
+    !Number.isInteger(questionsPerTopic) ||
+    questionsPerTopic < 2 ||
+    questionsPerTopic > 12
+  ) {
+    throw new Error("Кількість завдань на тему має бути від 2 до 12.");
   }
 
   return topics.flatMap((topic) =>

@@ -12,7 +12,7 @@ export interface Assignment {
   id: string;
   title: string;
   topics: string[];
-  questions_per_topic: 4 | 8 | 12;
+  questions_per_topic: number;
   total_questions: number;
   created_at: string;
 }
@@ -258,7 +258,7 @@ export async function createAssignment(input: {
   classroomId: string;
   title: string;
   topics: string[];
-  questionsPerTopic: 4 | 8 | 12;
+  questionsPerTopic: number;
 }): Promise<void> {
   const questions = generateAssignmentQuestions(
     input.topics,

@@ -4,7 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import "./App.css";
 import AccountGate from "./AccountGate.tsx";
 import { StudentDashboard, TeacherDashboard } from "./Classroom.tsx";
-import { getAccountProfile } from "./ts/classroom.ts";
+import { getAccountProfile, joinClassroom } from "./ts/classroom.ts";
 import { getSupabase, isSupabaseConfigured } from "./ts/supabase.ts";
 import type { User } from "./ts/types.ts";
 
@@ -121,6 +121,23 @@ function App() {
 
         setProfile({ userId: session.user.id, account: nextProfile });
         setProfileError("");
+        if (
+          nextProfile.role === "student" &&
+          inviteCode &&
+          /^\d{6}$/.test(inviteCode)
+        ) {
+          try {
+            await joinClassroom(inviteCode);
+            window.history.replaceState(null, "", "/");
+          } catch (error) {
+            console.error("Unable to join the invited classroom.", error);
+            if (active) {
+              setProfileError(
+                "Не вдалося автоматично приєднатися до класу. Спробуй увести код вручну.",
+              );
+            }
+          }
+        }
       })
       .catch((error: unknown) => {
         if (active) {
@@ -132,7 +149,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [session, inviteCode]);
 
   return (
     <div className="App">

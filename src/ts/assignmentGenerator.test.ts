@@ -93,6 +93,8 @@ describe("generateAssignmentQuestions", () => {
     expect(() =>
       generateAssignmentQuestions(["Текстові задачі", "Текстові задачі"], 4),
     ).toThrow();
-    expect(() => generateAssignmentQuestions(["Текстові задачі"], 5)).toThrow();
+    expect(() => generateAssignmentQuestions(["Текстові задачі"], 5)).not.toThrow();
+    expect(() => generateAssignmentQuestions(["Текстові задачі"], 1)).toThrow();
+    expect(() => generateAssignmentQuestions(["Текстові задачі"], 13)).toThrow();
   });
 });

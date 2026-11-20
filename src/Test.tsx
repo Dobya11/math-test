@@ -45,7 +45,7 @@ const INCORRECT_QUOTES = [
   "Кожна помилка робить тебе сильнішим!",
   "Не здавайся, ти можеш це!",
   "Тренуйся — і вийде!",
-  "Буває! Головне — рухатись далі.",
+  "Буває! Головне — рухатися далі.",
 ];
 
 function pick<T>(arr: T[]): T {
@@ -321,7 +321,7 @@ function Test({
                 : "Кожен тест допомагає вчитися. Спробуй ще раз!"}
           </p>
 
-          <h3>Як вийшли різні завдання</h3>
+          <h3>Результати за видами завдань</h3>
           <div className="skill-list">
             {result.typeStats
               .filter((stat) => stat.total > 0)
@@ -356,8 +356,8 @@ function Test({
               })}
           </div>
 
-          {bestStat && <p>Найкраще вийшло: {bestStat.typeLabel}</p>}
-          {worstStat && <p>Ще потренуй: {worstStat.typeLabel}</p>}
+          {bestStat && <p>Найкраще вдалося: {bestStat.typeLabel}</p>}
+          {worstStat && <p>Потренуй ще: {worstStat.typeLabel}</p>}
 
           <p className="result-meta">
             Час: {Math.floor(result.timeTakenMs / 60000)} хв{" "}
@@ -466,14 +466,16 @@ function Test({
           />
         )}
 
-        <button
-          onClick={submitAnswer}
-          disabled={!userAnswer.trim() || isAnswered}
-        >
-          {currentIndex + 1 === questions.length
-            ? "Завершити тест"
-            : "Наступне питання"}
-        </button>
+        {!isAnswered && (
+          <button
+            onClick={submitAnswer}
+            disabled={!userAnswer.trim()}
+          >
+            {currentIndex + 1 === questions.length
+              ? "Завершити тест"
+              : "Перевірити"}
+          </button>
+        )}
       </PageCard>
 
       <div

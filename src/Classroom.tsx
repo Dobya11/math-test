@@ -19,21 +19,6 @@ import {
 import { ASSIGNMENT_TOPICS } from "./ts/assignmentGenerator.ts";
 import type { User } from "./ts/types.ts";
 
-const QUESTIONS_PER_TOPIC = [4, 8, 12] as const;
-
-const TOPIC_DESCRIPTIONS: Record<string, string> = {
-  "Повторення матеріалу 1 класу": "Основи обчислень і порівняння",
-  "Додавання і віднімання в межах 20": "Швидкі обчислення в межах 20",
-  "Додавання двоцифрових чисел": "Складання чисел з переходом через десяток",
-  "Віднімання двоцифрових чисел": "Віднімання у двоцифрових числах",
-  "Числа, нумерація та порівняння": "Числа, розряди та знак порівняння",
-  "Вирази й порядок дій": "Порядок виконання дій у виразах",
-  "Текстові задачі": "Розв’язування задач у життєвих ситуаціях",
-  "Величини та вимірювання": "Довжина, маса, час та одиниці вимірювання",
-  "Геометрія й периметр": "Периметр фігур та геометричні задачі",
-  "Множення та ділення": "Табличне множення і ділення",
-};
-
 function ErrorMessage({ message }: { message: string }) {
   return (
     <p className="account-error" role="alert">
@@ -45,8 +30,7 @@ function ErrorMessage({ message }: { message: string }) {
 function TeacherDashboard({ user }: { user: User }) {
   const [snapshot, setSnapshot] = useState<TeacherSnapshot | null>(null);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [questionsPerTopic, setQuestionsPerTopic] =
-    useState<(typeof QUESTIONS_PER_TOPIC)[number]>(4);
+  const [questionsPerTopic, setQuestionsPerTopic] = useState(4);
   const [title, setTitle] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [error, setError] = useState("");
@@ -272,10 +256,6 @@ function TeacherDashboard({ user }: { user: User }) {
 
           <PageCard type="analysis">
             <h2>Створити завдання</h2>
-            <p>
-              Виберіть теми й кількість прикладів для кожної з них. Задачі
-              формуються під рівень навчальної програми.
-            </p>
             <form className="assignment-form" onSubmit={handleCreateAssignment}>
               <label className="info-field">
                 <span>Назва завдання (необов’язково)</span>
@@ -313,9 +293,6 @@ function TeacherDashboard({ user }: { user: User }) {
                         />
                         <span className="topic-option-body">
                           <span className="topic-option-title">{topic}</span>
-                          <span className="topic-option-meta">
-                            {TOPIC_DESCRIPTIONS[topic]}
-                          </span>
                         </span>
                       </label>
                     );
@@ -324,29 +301,36 @@ function TeacherDashboard({ user }: { user: User }) {
               </fieldset>
               <fieldset className="topic-picker">
                 <legend>Завдань на одну тему</legend>
-                <div className="topic-grid compact-grid">
-                  {QUESTIONS_PER_TOPIC.map((count) => (
-                    <label
-                      className={`topic-option secondary-option${
-                        questionsPerTopic === count ? " selected" : ""
-                      }`}
-                      key={count}
-                    >
-                      <input
-                        type="radio"
-                        name="questions-per-topic"
-                        checked={questionsPerTopic === count}
-                        onChange={() => setQuestionsPerTopic(count)}
-                      />
-                      <span className="topic-option-body">
-                        <span className="topic-option-title">{count} завдань</span>
-                        <span className="topic-option-meta">
-                          {count === 4 ? "Коротка практика" : count === 8 ? "Середній блок" : "Повна перевірка"}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <label className="info-field">
+                  <span>Кількість: <strong>{questionsPerTopic}</strong></span>
+                  <input
+                    type="range"
+                    min={2}
+                    max={12}
+                    step={1}
+                    value={questionsPerTopic}
+                    onChange={(event) =>
+                      setQuestionsPerTopic(Number(event.target.value))
+                    }
+                  />
+                </label>
+                <label className="info-field">
+                  <span>Увести вручну</span>
+                  <input
+                    className="account-input"
+                    type="number"
+                    min={2}
+                    max={12}
+                    step={1}
+                    value={questionsPerTopic}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (Number.isInteger(value) && value >= 2 && value <= 12) {
+                        setQuestionsPerTopic(value);
+                      }
+                    }}
+                  />
+                </label>
               </fieldset>
               <p className="assignment-total">
                 Вибрано тем: <strong>{selectedTopics.length}</strong> · Загальна
@@ -680,10 +664,6 @@ function AssignmentTest({
         </PageCard>
         <PageCard type="test">
           <p>{assignment.topics.join(", ")}</p>
-          <p>
-            На тебе чекають приклади, задачі й запитання з варіантами відповіді
-            або полем для введення.
-          </p>
           {error && <ErrorMessage message={error} />}
           <button
             type="button"
@@ -771,17 +751,7 @@ function AssignmentTest({
               </button>
             </form>
           )
-        ) : (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleNext()}
-          >
-            {currentIndex + 1 === questions.length
-              ? "Показати результат"
-              : "Наступне завдання"}
-          </button>
-        )}
+        ) : null}
       </PageCard>
       {feedback && (
         <div
@@ -905,10 +875,6 @@ function StudentDashboard({
       {!loading && snapshot && !snapshot.classroom && (
         <PageCard type="analysis">
           <h2>Приєднатися до класу</h2>
-          <p>
-            Уведи код класу від учителя. Якщо складно — попроси його допомогти
-            або відкрий посилання.
-          </p>
           <form className="assignment-form" onSubmit={handleJoinClass}>
             <label className="info-field">
               <span>Код класу</span>
