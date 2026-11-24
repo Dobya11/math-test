@@ -82,6 +82,41 @@ async function getAssignments(classroomId: string): Promise<Assignment[]> {
   return data ?? [];
 }
 
+async function ensureStudentAssignmentQuestions(
+  assignment: Assignment,
+): Promise<void> {
+  const existingQuestions = await getAssignmentQuestions(assignment.id, true);
+  if (existingQuestions.length === assignment.total_questions) return;
+  if (existingQuestions.length > 0) {
+    throw new Error("Персональний набір завдань неповний. Повідомте вчителя.");
+  }
+
+  const usedPrompts = new Set<string>();
+  const client = getSupabase();
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const questions = generateUniqueAssignmentQuestions(
+      assignment.topics,
+      assignment.questions_per_topic,
+      usedPrompts,
+    );
+    const { data, error } = await client.rpc(
+      "create_student_assignment_questions",
+      {
+        p_assignment_id: assignment.id,
+        p_questions: questions,
+      },
+    );
+    if (error) throw error;
+    if (data === true) return;
+
+    questions.forEach(({ prompt }) => usedPrompts.add(prompt));
+  }
+
+  throw new Error(
+    `Не вдалося створити унікальний набір для завдання «${assignment.title}». Спробуйте ще раз.`,
+  );
+}
+
 export async function getAccountProfile(userId: string): Promise<User | null> {
   const { data, error } = await getSupabase()
     .from("profiles")
@@ -213,6 +248,11 @@ export async function getStudentSnapshot(
   if (classroomError) throw classroomError;
 
   const assignments = await getAssignments(classroom.id);
+  await Promise.all(
+    assignments
+      .filter(({ personalized_questions }) => personalized_questions)
+      .map(ensureStudentAssignmentQuestions),
+  );
   const attemptSelect =
     "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at";
 
@@ -349,7 +389,7 @@ export async function submitAssignmentAnswer(
   const { data, error } = await getSupabase().rpc(
     personalized
       ? "submit_student_assignment_answer"
-      : "submit_assignment_answer",
+      : "submit_assignment_answer_with_summary",
     {
       p_attempt_id: attemptId,
       p_question_id: questionId,

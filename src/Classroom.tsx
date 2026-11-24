@@ -33,6 +33,9 @@ function TeacherDashboard({ user }: { user: User }) {
   const [questionsPerTopic, setQuestionsPerTopic] = useState(4);
   const [title, setTitle] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -447,34 +450,66 @@ function TeacherDashboard({ user }: { user: User }) {
                         <div className="attempt-question-list">
                           {questionSummaries.map((summary, index) => (
                             <div
-                              className={[
-                                "attempt-question-item",
-                                summary.isCorrect
-                                  ? "attempt-question-item--correct"
-                                  : "attempt-question-item--incorrect",
-                              ].join(" ")}
+                              className="attempt-question-entry"
                               key={`${attempt.id}-${index}`}
                             >
-                              <span className="attempt-question-number">
+                              <button
+                                type="button"
+                                className={[
+                                  "attempt-question-number",
+                                  summary.isCorrect
+                                    ? "attempt-question-number--correct"
+                                    : "attempt-question-number--incorrect",
+                                ].join(" ")}
+                                aria-label={`Питання ${index + 1}: ${summary.isCorrect ? "правильно" : "неправильно"}. Показати відповідь`}
+                                aria-expanded={
+                                  expandedQuestionId ===
+                                  `${attempt.id}-${index}`
+                                }
+                                onClick={() =>
+                                  setExpandedQuestionId((current) =>
+                                    current === `${attempt.id}-${index}`
+                                      ? null
+                                      : `${attempt.id}-${index}`,
+                                  )
+                                }
+                              >
                                 {index + 1}
-                              </span>
-                              <div className="attempt-question-copy">
-                                <strong>{summary.prompt}</strong>
-                                <small>
-                                  Відповідь учня: {summary.studentAnswer || "—"}
-                                </small>
-                                {summary.correctAnswer && (
+                              </button>
+                              {expandedQuestionId ===
+                                `${attempt.id}-${index}` && (
+                                <div
+                                  className={[
+                                    "attempt-question-copy",
+                                    summary.isCorrect
+                                      ? "attempt-question-copy--correct"
+                                      : "attempt-question-copy--incorrect",
+                                  ].join(" ")}
+                                >
+                                  <strong>{summary.prompt}</strong>
                                   <small>
-                                    Правильна відповідь: {summary.correctAnswer}
+                                    Відповідь учня: {summary.studentAnswer || "—"}
                                   </small>
-                                )}
-                                <small>
-                                  {summary.isCorrect ? "Правильно" : "Неправильно"}
-                                </small>
-                              </div>
+                                  {summary.correctAnswer && (
+                                    <small>
+                                      Правильна відповідь: {summary.correctAnswer}
+                                    </small>
+                                  )}
+                                  <small>
+                                    {summary.isCorrect
+                                      ? "Правильно"
+                                      : "Неправильно"}
+                                  </small>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
+                      )}
+                      {isCompleted && questionSummaries.length === 0 && (
+                        <p className="attempt-question-empty">
+                          Відповіді для цієї спроби не зберігалися.
+                        </p>
                       )}
                     </div>
                   );
