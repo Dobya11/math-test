@@ -461,7 +461,15 @@ function TeacherDashboard({ user }: { user: User }) {
                               <div className="attempt-question-copy">
                                 <strong>{summary.prompt}</strong>
                                 <small>
-                                  Відповідь: {summary.studentAnswer || "—"}
+                                  Відповідь учня: {summary.studentAnswer || "—"}
+                                </small>
+                                {summary.correctAnswer && (
+                                  <small>
+                                    Правильна відповідь: {summary.correctAnswer}
+                                  </small>
+                                )}
+                                <small>
+                                  {summary.isCorrect ? "Правильно" : "Неправильно"}
                                 </small>
                               </div>
                             </div>
@@ -504,13 +512,18 @@ function AssignmentTest({
     setBusy(true);
     setError("");
     try {
-      const nextAttemptId = await startAssignmentAttempt(assignment.id);
-      const nextQuestions = await getAssignmentQuestions(assignment.id);
+      const nextQuestions = await getAssignmentQuestions(
+        assignment.id,
+        assignment.personalized_questions,
+      );
       if (nextQuestions.length === 0) {
         throw new Error(
-          "Для цього завдання ще немає питань. Попроси вчителя створити нове.",
+          assignment.personalized_questions
+            ? "Для тебе ще не створено окремий набір завдань. Попроси вчителя створити нове завдання."
+            : "Для цього завдання ще немає питань. Попроси вчителя створити нове.",
         );
       }
+      const nextAttemptId = await startAssignmentAttempt(assignment.id);
       setQuestions(nextQuestions);
       setAttemptId(nextAttemptId);
       setCurrentIndex(0);
@@ -542,6 +555,7 @@ function AssignmentTest({
         attemptId,
         question.id,
         response,
+        assignment.personalized_questions,
       );
       setAnswers((current) => [...current, isCorrect]);
       setFeedback({
@@ -572,7 +586,10 @@ function AssignmentTest({
     setBusy(true);
     setError("");
     try {
-      await completeAssignmentAttempt(attemptId);
+      await completeAssignmentAttempt(
+        attemptId,
+        assignment.personalized_questions,
+      );
       setResult(answers);
     } catch (caughtError) {
       setError(

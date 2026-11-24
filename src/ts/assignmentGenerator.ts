@@ -177,3 +177,24 @@ export function generateAssignmentQuestions(
     }),
   );
 }
+
+export function generateUniqueAssignmentQuestions(
+  topics: string[],
+  questionsPerTopic: number,
+  usedPrompts: ReadonlySet<string> = new Set(),
+): AssignmentQuestionDraft[] {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const questions = generateAssignmentQuestions(topics, questionsPerTopic);
+    const prompts = questions.map(({ prompt }) => prompt);
+    if (
+      new Set(prompts).size === prompts.length &&
+      prompts.every((prompt) => !usedPrompts.has(prompt))
+    ) {
+      return questions;
+    }
+  }
+
+  throw new Error(
+    "Не вдалося створити унікальний набір завдань. Спробуйте зменшити кількість завдань або вибрати інші теми.",
+  );
+}

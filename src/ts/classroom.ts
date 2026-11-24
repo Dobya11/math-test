@@ -1,5 +1,8 @@
 import type { User } from "./types.ts";
-import { generateAssignmentQuestions } from "./assignmentGenerator.ts";
+import {
+  generateAssignmentQuestions,
+  generateUniqueAssignmentQuestions,
+} from "./assignmentGenerator.ts";
 import { getSupabase } from "./supabase.ts";
 
 export interface Classroom {
@@ -15,6 +18,7 @@ export interface Assignment {
   questions_per_topic: number;
   total_questions: number;
   created_at: string;
+  personalized_questions: boolean;
 }
 
 export interface AssignmentQuestion {
@@ -28,8 +32,10 @@ export interface AssignmentQuestion {
 }
 
 export interface AttemptQuestionSummary {
+  questionId?: string;
   prompt: string;
   studentAnswer: string;
+  correctAnswer?: string;
   isCorrect: boolean;
 }
 
@@ -67,7 +73,9 @@ export interface StudentSnapshot {
 async function getAssignments(classroomId: string): Promise<Assignment[]> {
   const { data, error } = await getSupabase()
     .from("assignments")
-    .select("id,title,topics,questions_per_topic,total_questions,created_at")
+    .select(
+      "id,title,topics,questions_per_topic,total_questions,created_at,personalized_questions",
+    )
     .eq("classroom_id", classroomId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -206,7 +214,7 @@ export async function getStudentSnapshot(
 
   const assignments = await getAssignments(classroom.id);
   const attemptSelect =
-    "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at,question_summaries";
+    "id,assignment_id,student_id,status,score,total_questions,started_at,completed_at";
 
   const attemptResult =
     assignments.length > 0
@@ -260,18 +268,39 @@ export async function createAssignment(input: {
   topics: string[];
   questionsPerTopic: number;
 }): Promise<void> {
+  const client = getSupabase();
+  const { data: members, error: membersError } = await client
+    .from("class_members")
+    .select("student_id")
+    .eq("classroom_id", input.classroomId);
+  if (membersError) throw membersError;
+  if (!members?.length) {
+    throw new Error("Щоб створити завдання, спочатку запросіть учнів до класу.");
+  }
+
+  const usedPrompts = new Set<string>();
+  const studentQuestions = members.map(({ student_id }) => {
+    const questions = generateUniqueAssignmentQuestions(
+      input.topics,
+      input.questionsPerTopic,
+      usedPrompts,
+    );
+    questions.forEach(({ prompt }) => usedPrompts.add(prompt));
+    return { student_id, questions };
+  });
   const questions = generateAssignmentQuestions(
     input.topics,
     input.questionsPerTopic,
   );
-  const { data, error } = await getSupabase().rpc(
-    "create_assignment_with_questions",
+  const { data, error } = await client.rpc(
+    "create_assignment_with_student_questions",
     {
       p_classroom_id: input.classroomId,
       p_title: input.title.trim(),
       p_topics: input.topics,
       p_questions_per_topic: input.questionsPerTopic,
       p_questions: questions,
+      p_student_questions: studentQuestions,
     },
   );
   if (error) throw error;
@@ -282,12 +311,18 @@ export async function createAssignment(input: {
 
 export async function getAssignmentQuestions(
   assignmentId: string,
+  personalized: boolean,
 ): Promise<AssignmentQuestion[]> {
-  const { data, error } = await getSupabase()
-    .from("generated_questions")
-    .select("id,position,topic,prompt,response_mode,answer_type,options")
-    .eq("assignment_id", assignmentId)
-    .order("position");
+  const client = getSupabase();
+  const { data, error } = personalized
+    ? await client.rpc("get_student_assignment_questions", {
+        p_assignment_id: assignmentId,
+      })
+    : await client
+        .from("generated_questions")
+        .select("id,position,topic,prompt,response_mode,answer_type,options")
+        .eq("assignment_id", assignmentId)
+        .order("position");
   if (error) throw error;
   return data ?? [];
 }
@@ -309,12 +344,18 @@ export async function submitAssignmentAnswer(
   attemptId: string,
   questionId: string,
   answer: string,
+  personalized: boolean,
 ): Promise<boolean> {
-  const { data, error } = await getSupabase().rpc("submit_assignment_answer", {
-    p_attempt_id: attemptId,
-    p_question_id: questionId,
-    p_response: answer,
-  });
+  const { data, error } = await getSupabase().rpc(
+    personalized
+      ? "submit_student_assignment_answer"
+      : "submit_assignment_answer",
+    {
+      p_attempt_id: attemptId,
+      p_question_id: questionId,
+      p_response: answer,
+    },
+  );
   if (error) throw error;
   if (typeof data !== "boolean") {
     throw new Error("Не вдалося зберегти відповідь.");
@@ -324,10 +365,16 @@ export async function submitAssignmentAnswer(
 
 export async function completeAssignmentAttempt(
   attemptId: string,
+  personalized: boolean,
 ): Promise<void> {
-  const { error } = await getSupabase().rpc("complete_assignment_attempt", {
-    p_attempt_id: attemptId,
-  });
+  const { error } = await getSupabase().rpc(
+    personalized
+      ? "complete_student_assignment_attempt"
+      : "complete_assignment_attempt",
+    {
+      p_attempt_id: attemptId,
+    },
+  );
   if (error) throw error;
 }
 

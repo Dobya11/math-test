@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASSIGNMENT_TOPICS,
   generateAssignmentQuestions,
+  generateUniqueAssignmentQuestions,
 } from "./assignmentGenerator.ts";
 
 describe("generateAssignmentQuestions", () => {
@@ -85,6 +86,24 @@ describe("generateAssignmentQuestions", () => {
       expect(minuend - subtrahend).toBeGreaterThanOrEqual(10);
       expect(question.correct_answer).toBe(String(minuend - subtrahend));
     }
+  });
+
+  it("generates prompt sets that do not overlap between students", () => {
+    const firstSet = generateUniqueAssignmentQuestions(
+      ["Додавання двоцифрових чисел"],
+      4,
+    );
+    const usedPrompts = new Set(firstSet.map(({ prompt }) => prompt));
+    const secondSet = generateUniqueAssignmentQuestions(
+      ["Додавання двоцифрових чисел"],
+      4,
+      usedPrompts,
+    );
+
+    expect(new Set(firstSet.map(({ prompt }) => prompt)).size).toBe(4);
+    expect(
+      secondSet.every(({ prompt }) => !usedPrompts.has(prompt)),
+    ).toBe(true);
   });
 
   it("rejects unknown, duplicate, or empty topics and unsupported counts", () => {
