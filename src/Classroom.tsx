@@ -64,6 +64,17 @@ function TeacherDashboard({ user }: { user: User }) {
     return unsubscribe;
   }, [refresh]);
 
+  useEffect(() => {
+    if (!selectedStudentId) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedStudentId("");
+    }
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [selectedStudentId]);
+
   async function handleCreateClassroom() {
     setSaving(true);
     setError("");
@@ -161,7 +172,6 @@ function TeacherDashboard({ user }: { user: User }) {
       {!loading && snapshot && !snapshot.classroom && (
         <PageCard type="analysis">
           <h2>Створіть свій клас</h2>
-          <p>Класу буде призначено унікальний код для запрошення учнів.</p>
           <button
             type="button"
             disabled={saving}
@@ -400,27 +410,46 @@ function TeacherDashboard({ user }: { user: User }) {
       )}
 
       {selectedStudent && (
-        <div className="modal-backdrop" role="presentation">
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectedStudentId("");
+          }}
+        >
           <section
             className="student-details"
             role="dialog"
             aria-modal="true"
             aria-labelledby="student-details-title"
           >
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setSelectedStudentId("")}
-            >
-              Закрити
-            </button>
-            <h2 id="student-details-title">{selectedStudent.name}</h2>
-            <h3>Спроби виконання</h3>
+            <header className="student-details-header">
+              <div>
+                <p className="student-details-label">Результати учня</p>
+                <h2 id="student-details-title">{selectedStudent.name}</h2>
+              </div>
+              <button
+                type="button"
+                className="student-details-close"
+                aria-label="Закрити результат учня"
+                onClick={() => setSelectedStudentId("")}
+              >
+                ×
+              </button>
+            </header>
             {selectedAttempts.length === 0 ? (
-              <p>Учень ще не розпочинав завдань.</p>
+              <p className="attempt-question-empty">
+                Учень ще не розпочинав завдань.
+              </p>
             ) : (
-              <div className="history-list">
-                {selectedAttempts.map((attempt) => {
+              <div className="history-list student-attempt-list">
+                {[...selectedAttempts]
+                  .sort((a, b) =>
+                    (b.completed_at ?? b.started_at).localeCompare(
+                      a.completed_at ?? a.started_at,
+                    ),
+                  )
+                  .map((attempt) => {
                   const assignment = snapshot?.assignments.find(
                     ({ id }) => id === attempt.assignment_id,
                   );
