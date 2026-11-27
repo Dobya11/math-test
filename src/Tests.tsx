@@ -61,8 +61,6 @@ function Tests({
       <PageCard type="test">
         <h2>Новий тест</h2>
 
-        <p>Обери завдання та перевір свої знання</p>
-
         <section className="info">
           <label className="info-field">
             <span>Клас</span>

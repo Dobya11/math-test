@@ -1032,10 +1032,6 @@ function StudentDashboard({
                 })}
               </div>
             )}
-            <p className="account-note">
-              У кожному завданні потрібно визначити, чи правильно пораховано
-              суму.
-            </p>
           </PageCard>
           <PageCard type="analysis">
             <h2>Мої результати</h2>

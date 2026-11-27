@@ -41,11 +41,7 @@ function AccountGate({ inviteCode, onCreateAccount }: AccountGateProps) {
       <div className="screen account-screen">
         <PageCard type="header">
           <h1>Математика</h1>
-          <p>
-            {inviteCode
-              ? `Запрошення до класу ${inviteCode}`
-              : "Створи профіль на цьому пристрої"}
-          </p>
+          {inviteCode && <p>Запрошення до класу {inviteCode}</p>}
         </PageCard>
 
         <PageCard type="account">
